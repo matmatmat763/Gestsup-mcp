@@ -23,10 +23,26 @@ depuis un agent LLM (Claude Desktop, Claude Code, etc.), accompagné d'une
 | `gestsup_find_tickets_by_user` | Lister les tickets d'un demandeur (tri + pagination). |
 | `gestsup_get_user` | Lire la fiche d'un utilisateur. |
 | `gestsup_list_referential` | Lister types / catégories / sous-catégories / lieux. |
+| `gestsup_search_tickets` ⭐ | Rechercher des tickets par **technicien**, état, catégorie, mots-clés, dates. **Nécessite le plugin `gestsup_mcp`** (voir ci-dessous). |
 
-> Périmètre = ce que l'API GestSup permet réellement (création de ticket,
-> commentaires, lecture). La modification d'état, l'affectation et la gestion
-> des équipements ne sont **pas** exposées par l'API GestSup (cf. la doc).
+> Les 6 premiers outils n'utilisent que l'API GestSup native. Le 7e
+> (`gestsup_search_tickets`) s'appuie sur un **plugin serveur optionnel** qui
+> ajoute ce que l'API native ne sait pas faire (lister par technicien, recherche
+> globale). La modification d'état, l'affectation et la gestion des équipements
+> ne sont pas encore exposées (prochaines étapes du plugin).
+
+## Plugin serveur GestSup `gestsup_mcp` (optionnel)
+
+L'API native ne sait **pas** lister les tickets par technicien ni faire de
+recherche globale. Le dossier [`plugin/gestsup_mcp/`](plugin/gestsup_mcp/) est un
+**addon GestSup** (PHP) qui ajoute un endpoint **lecture seule** pour ça, en
+réutilisant la clé API existante. Sans lui, les 6 autres outils fonctionnent ;
+seul `gestsup_search_tickets` requiert son installation.
+
+Installation résumée (détails dans le [README du plugin](plugin/gestsup_mcp/README.md)) :
+copier `plugin/gestsup_mcp/` dans le dossier `plugins/` de GestSup, exécuter
+`_SQL/install.sql`, puis activer le plugin dans Administration → Paramètres →
+Plugins. **Le cœur de GestSup n'est pas modifié.**
 
 ## Pré-requis côté GestSup
 

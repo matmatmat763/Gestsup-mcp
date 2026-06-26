@@ -181,6 +181,70 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     },
   );
 
+  // -------------------------------- recherche de tickets (plugin gestsup_mcp)
+  server.registerTool(
+    "gestsup_search_tickets",
+    {
+      title: "Rechercher des tickets",
+      description:
+        "Recherche/liste des tickets avec filtres (technicien, état, catégorie, demandeur, mots-clés, dates), tri et pagination. Permet notamment de lister les tickets d'un TECHNICIEN. Nécessite le plugin serveur GestSup « gestsup_mcp » installé et activé.",
+      inputSchema: {
+        technician_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("ID du technicien assigné (pour lister SES tickets)."),
+        state_id: z.number().int().nonnegative().optional().describe("ID d'état du ticket."),
+        category_id: z.number().int().positive().optional().describe("ID de catégorie."),
+        subcat_id: z.number().int().positive().optional().describe("ID de sous-catégorie."),
+        requester_id: z.number().int().positive().optional().describe("ID du demandeur."),
+        keywords: z.string().optional().describe("Recherche dans le titre et la description."),
+        date_from: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional()
+          .describe("Date de création minimale (YYYY-MM-DD)."),
+        date_to: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional()
+          .describe("Date de création maximale (YYYY-MM-DD)."),
+        order: z
+          .enum(["id", "date_create", "date_modif", "state", "priority"])
+          .default("date_create")
+          .describe("Critère de tri."),
+        sort: z.enum(["ASC", "DESC"]).default("DESC").describe("Sens du tri."),
+        limit: z.number().int().positive().max(200).default(50).describe("Tickets par page (max 200)."),
+        page: z.number().int().min(0).default(0).describe("Numéro de page (0 = première)."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const r = await client.searchTickets({
+          technician_id: args.technician_id,
+          state_id: args.state_id,
+          category_id: args.category_id,
+          subcat_id: args.subcat_id,
+          requester_id: args.requester_id,
+          keywords: args.keywords,
+          date_from: args.date_from,
+          date_to: args.date_to,
+          order: args.order,
+          sort: args.sort,
+          limit: args.limit,
+          page: args.page,
+        });
+        return ok(
+          `${r.count} ticket(s) affiché(s) sur ${r.total} au total (page ${args.page}).`,
+          r,
+        );
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
   // ------------------------------------------------------------ référentiels
   server.registerTool(
     "gestsup_list_referential",

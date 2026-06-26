@@ -128,6 +128,56 @@ describe("GestsupClient.listReferential", () => {
   });
 });
 
+describe("GestsupClient.searchTickets (plugin gestsup_mcp)", () => {
+  it("appelle l'endpoint plugin, passe offset = page*limit et décode", async () => {
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      type: "success",
+      action: "TicketList",
+      count: 1,
+      total: 12,
+      limit: 10,
+      offset: 20,
+      tickets: [
+        {
+          ticket_id: 5,
+          title: "Souci &amp; co",
+          state_id: 3,
+          state_name: "En cours",
+          technician_id: 12,
+          technician_name: "Jean Dupont",
+          user_id: 42,
+          requester_name: "Marie Martin",
+          date_create: "2025-02-01 10:00:00",
+          date_modif: "2025-02-02 09:00:00",
+        },
+      ],
+    });
+    const client = new GestsupClient(cfg, impl);
+    const r = await client.searchTickets({
+      technician_id: 12,
+      order: "date_create",
+      sort: "DESC",
+      limit: 10,
+      page: 2,
+    });
+    expect(r.total).toBe(12);
+    expect(r.tickets[0].title).toBe("Souci & co");
+    expect(r.tickets[0].technician_name).toBe("Jean Dupont");
+    expect(calls[0].url).toContain("/plugins/gestsup_mcp/tickets.php");
+    expect(calls[0].url).toContain("technician=12");
+    expect(calls[0].url).toContain("offset=20"); // page 2 * limit 10
+  });
+
+  it("explique clairement si le plugin n'est pas installé (404)", async () => {
+    const { impl } = fakeFetch(404, "Not Found");
+    const client = new GestsupClient(cfg, impl);
+    await expect(
+      client.searchTickets({ order: "id", sort: "ASC", limit: 10, page: 0 }),
+    ).rejects.toThrow(/gestsup_mcp/);
+  });
+});
+
 describe("GestsupClient (auth basic)", () => {
   it("envoie l'en-tête Authorization Basic", async () => {
     const { impl, calls } = fakeFetch(200, { code: 0, ticket_id: 1, ticket_url: "u", message: "m" });

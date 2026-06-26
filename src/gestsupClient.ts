@@ -3,8 +3,10 @@ import { GestsupError, mapError } from "./errors.js";
 import {
   isSuccess,
   normalizeTicket,
+  normalizeTicketListItem,
   normalizeTicketSummary,
   type Ticket,
+  type TicketListItem,
   type TicketSummary,
 } from "./normalize.js";
 
@@ -33,6 +35,30 @@ export interface FindTicketsInput {
   limit: number;
   /** Numéro de page (0 = première page). Mappé sur le paramètre `offset` de l'API. */
   page: number;
+}
+
+export interface SearchTicketsInput {
+  technician_id?: number;
+  state_id?: number;
+  category_id?: number;
+  subcat_id?: number;
+  requester_id?: number;
+  keywords?: string;
+  date_from?: string;
+  date_to?: string;
+  order: "id" | "date_create" | "date_modif" | "state" | "priority";
+  sort: "ASC" | "DESC";
+  limit: number;
+  /** Numéro de page (0 = première). Converti en offset réel pour le plugin. */
+  page: number;
+}
+
+export interface SearchTicketsResult {
+  total: number;
+  count: number;
+  limit: number;
+  offset: number;
+  tickets: TicketListItem[];
 }
 
 export interface UserInfo {
@@ -65,15 +91,16 @@ export class GestsupClient {
     return { "X-API-KEY": this.cfg.apiKey };
   }
 
-  private async call(
+  /** Appel sur un chemin relatif à la racine de l'instance (hors /api/v1). */
+  private async callAbsolute(
     method: string,
-    path: string,
+    subPath: string,
     opts: {
       query?: Record<string, string | number>;
       form?: Record<string, string | number | undefined>;
     } = {},
   ): Promise<{ status: number; ok: boolean; body: Json }> {
-    const url = new URL(this.cfg.baseUrl + "/api/v1" + path);
+    const url = new URL(this.cfg.baseUrl + subPath);
     if (opts.query) {
       for (const [k, v] of Object.entries(opts.query)) {
         url.searchParams.set(k, String(v));
@@ -109,13 +136,30 @@ export class GestsupClient {
       try {
         parsed = JSON.parse(text) as Json;
       } catch {
-        throw new GestsupError(
-          `Réponse non-JSON de GestSup (HTTP ${res.status}). Vérifiez l'URL de base et le routage /api/v1.`,
-          res.status,
-        );
+        // Une réponse 2xx non-JSON = mauvaise config (URL/routage). Sur une
+        // réponse d'erreur (4xx/5xx), c'est souvent une page HTML d'Apache :
+        // on laisse body=null et on se fie au statut côté appelant.
+        if (res.ok) {
+          throw new GestsupError(
+            `Réponse non-JSON de GestSup (HTTP ${res.status}). Vérifiez l'URL de base et le routage /api/v1.`,
+            res.status,
+          );
+        }
       }
     }
     return { status: res.status, ok: res.ok, body: parsed };
+  }
+
+  /** Appel sur l'API native /api/v1. */
+  private call(
+    method: string,
+    path: string,
+    opts: {
+      query?: Record<string, string | number>;
+      form?: Record<string, string | number | undefined>;
+    } = {},
+  ): Promise<{ status: number; ok: boolean; body: Json }> {
+    return this.callAbsolute(method, "/api/v1" + path, opts);
   }
 
   // ----------------------------------------------------------------- Tickets
@@ -248,5 +292,53 @@ export class GestsupClient {
           };
       }
     });
+  }
+
+  // ----------------------------- Plugin gestsup_mcp (API étendue, lecture) ---
+
+  /**
+   * Recherche/liste de tickets via le plugin serveur `gestsup_mcp`.
+   * Requiert l'installation + activation du plugin sur l'instance GestSup.
+   */
+  async searchTickets(input: SearchTicketsInput): Promise<SearchTicketsResult> {
+    const query: Record<string, string | number> = {
+      order: input.order,
+      sort: input.sort,
+      limit: input.limit,
+      offset: input.page * input.limit, // l'endpoint plugin attend un offset réel
+    };
+    if (input.technician_id !== undefined) query.technician = input.technician_id;
+    if (input.state_id !== undefined) query.state = input.state_id;
+    if (input.category_id !== undefined) query.category = input.category_id;
+    if (input.subcat_id !== undefined) query.subcat = input.subcat_id;
+    if (input.requester_id !== undefined) query.user = input.requester_id;
+    if (input.keywords !== undefined && input.keywords !== "") query.keywords = input.keywords;
+    if (input.date_from !== undefined) query.date_from = input.date_from;
+    if (input.date_to !== undefined) query.date_to = input.date_to;
+
+    const { status, body } = await this.callAbsolute(
+      "GET",
+      "/plugins/gestsup_mcp/tickets.php",
+      { query },
+    );
+
+    if (status === 404) {
+      throw new GestsupError(
+        "Endpoint plugin introuvable (404). Le plugin GestSup « gestsup_mcp » n'est probablement pas installé sur cette instance.",
+        404,
+        "TicketList",
+      );
+    }
+    if (!isSuccess(body)) throw mapError(status, body, "TicketList");
+
+    const b = body as Record<string, unknown>;
+    const rows = Array.isArray(b.tickets) ? (b.tickets as Record<string, unknown>[]) : [];
+    return {
+      total: Number(b.total ?? rows.length),
+      count: Number(b.count ?? rows.length),
+      limit: Number(b.limit ?? input.limit),
+      offset: Number(b.offset ?? 0),
+      tickets: rows.map(normalizeTicketListItem),
+    };
   }
 }

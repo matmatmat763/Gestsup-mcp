@@ -97,6 +97,47 @@ function normalizeThread(t: Record<string, unknown>): ThreadItem {
   return item;
 }
 
+export interface TicketListItem {
+  ticket_id: string;
+  title: string;
+  state_id: string;
+  state_name: string;
+  type_id: string;
+  type_name: string;
+  category_id: string;
+  subcat_id: string;
+  technician_id: string;
+  technician_name: string;
+  user_id: string;
+  requester_name: string;
+  date_create: string;
+  date_modif: string;
+  priority: string;
+  criticality: string;
+}
+
+/** Normalise un ticket renvoyé par le plugin gestsup_mcp (endpoint étendu). */
+export function normalizeTicketListItem(t: Record<string, unknown>): TicketListItem {
+  return {
+    ticket_id: str(t.ticket_id),
+    title: decodeHtml(t.title),
+    state_id: str(t.state_id),
+    state_name: decodeHtml(t.state_name),
+    type_id: str(t.type_id),
+    type_name: decodeHtml(t.type_name),
+    category_id: str(t.category_id),
+    subcat_id: str(t.subcat_id),
+    technician_id: str(t.technician_id),
+    technician_name: decodeHtml(t.technician_name),
+    user_id: str(t.user_id),
+    requester_name: decodeHtml(t.requester_name),
+    date_create: str(t.date_create),
+    date_modif: str(t.date_modif),
+    priority: str(t.priority),
+    criticality: str(t.criticality),
+  };
+}
+
 export function normalizeTicketSummary(t: Record<string, unknown>): TicketSummary {
   return {
     ticket_id: str(t.ticket_id),
