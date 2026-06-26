@@ -1,0 +1,516 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "API GestSup",
+    "version": "1.0.2 bêta",
+    "title": "API GestSup"
+  },
+  "host": "localhost",
+  "basePath": "/master/api/v1",
+  "tags": [
+    {
+      "name": "ticket",
+      "description": "Available actions on tickets"
+    },
+    {
+      "name": "user",
+      "description": "Available actions on users"
+    }
+  ],
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/ticket/": {
+      "post": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "Create a ticket",
+        "description": " <b>Function :</b> <br /> Creation of a new ticket in GestSup <br /> <br /> <b>List of fields returned :</b> <ul> <li>code = value '1' an error detected, value '0' OK</li> <li>type = value 'error' an error detected, value 'success' OK</li> <li>action = Operation code</li> <li>message = wording of the course of the operation</li> <li>info = optional processing message</li> <li>ticket_id = ticket number that has just been created</li> <li>ticket_url = Ticket access URL</li> </ul> ",
+        "operationId": "CreateTicket",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "ticket_user_mail",
+            "in": "formData",
+            "description": "Type identifier",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "ticket_type",
+            "in": "formData",
+            "description": "Type identifier",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "ticket_title",
+            "in": "formData",
+            "description": "Ticket subject (title)",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "ticket_description",
+            "in": "formData",
+            "description": "Ticket description",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ticket/{ticket_id}/resolution": {
+      "post": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "Add text in resolution part of ticket",
+        "description": "  <b>Function :</b><br /> add comment in resolution part of ticket  <br /> <br />  <b>List of fields returned :</b>  <ul>  <li>code: 0= success 1=error </li>  <li>type: success=success error=error</li>  <li>action = Operation code</li> </ul> ",
+        "operationId": "TicketAddResolution",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "description": "Ticket number",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "user_id",
+            "in": "formData",
+            "description": "User Id",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "text",
+            "in": "formData",
+            "description": "Resolution text",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ticket/{ticket_id}": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "View a ticket",
+        "description": "  <b>Function :</b><br /> returns all the ticket information according to its number (TicketId)  <br /> <br />  <b>List of fields returned :</b>  <ul>  <li>code: 0= success 1=error </li>  <li>type: success=success error=error</li>  <li>action = Operation code</li> <li>ticket_id = ticket number</li>  <li>ticket_techncian= First and last name of the technician in charge of the ticket</li> <li>ticket_type_id = Ticket type identifier</li> <li>ticket_type_name= Ticket type name</li> <li>ticket_title = Ticket subject</li> <li>ticket_description = Ticket Description</li> <li>ticket_date_create = Ticket creation date</li> <li>ticket_date_create_fr = date the ticket was created in the format dd/mm/YYYY hh:mm:ss</li> <li>ticket_state_id = Ticket status GestSup identifier</li> <li>ticket_state_name = Ticket status label</li> <li>ticket_resolution = Ticket resolution (history of operations carried out) <ul> <li>thread_id = ticket resolution item number</li> <li>thread_type_id = Ticket resolution item type identifier</li> <ul> <li>0 = text</li> <li>1 = Assigning a ticket to a technician</li> <li>2 = Transferring a ticket from one technician to another</li> <li>3 = Mail sending</li> <li>4 = Closing the ticket</li> <li>5 = Ticket status change</li> </ul> <li>thread_type_name = Ticket resolution item type label</li><li>thread_state_name = Label of the state, if the type is change of state</li> <li>thread_date = ticket resolution item date</li> <li>thread_author = Firstname and lastname of the ticket solving author</li> <li>thread_text = Ticket resolution item text</li>  </li> </ul> </li> </ul> ",
+        "operationId": "GetTicketById",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "description": "Ticket number",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ticket/findByUser": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "List a requester's tickets",
+        "description": " <b>Function :</b><br /> Lists tickets for a requester based on a requester ID.<br /> <br /> <b>List of fields returned by ticket :</b> <ul> <li>code: 0= success 1=error </li> <li>type: success=success error=error</li> <li>action = Operation code</li> <li>ticket_id = Ticket number</li> <li>ticket_date_create = date the ticket was created in the format YYYY-mm-dd hh:mm:ss</li> <li>ticket_date_create_fr = date the ticket was created in the format dd/mm/YYYY hh:mm:ss</li> <li>ticket_subject = ticket subject</li> <li>ticket_state_id = ticket status identifier</li><li>ticket_state_name = ticket status label</li> <li>ticket_date_modif = date of last modification of the ticket in the format YYYY-mm-dd hh:mm:ss</li> <li>ticket_date_modif_fr = date of last modification of the ticket in the format dd/mm/YYYY hh:mm:ss</li> </ul> ",
+        "operationId": "ListTicketsByCustomerCode",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "description": "Requester ID",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": " Sort criterion : \"id\" = Ticket number, \"date_create\" = Ticket creation date, \"date_modif\" = ticket modification date",
+            "required": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxItems": 1,
+              "enum": [
+                "id",
+                "date_create",
+                "date_modif"
+              ],
+              "default": "id"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort direction (SQL)",
+            "required": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxItems": 1,
+              "enum": [
+                "ASC",
+                "DESC"
+              ],
+              "default": "ASC"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of rows returned (SQL)",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": " Paging (example for two lines per page ; limit= 2 and offset=0 for page 1 et offset = 2 for page 2)",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ticket/type/": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "List ticket types",
+        "description": "  <b>Function :</b><br /> return list of ticket types  <br /> <br />  <b>List of fields returned :</b>  <ul>  <li>code: 0= success 1=error </li>  <li>type: success=success error=error</li>  <li>action = Operation code</li> <li>ticket_type_name = name of ticket type</li> </ul> ",
+        "operationId": "ListTicketType",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ticket/category/": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "List ticket categories",
+        "description": "  <b>Function :</b><br /> returns list of ticket categories<br /> <br />  <b>List of fields returned :</b>  <ul>  <li>code: 0= success 1=error </li>  <li>type: success=success error=error</li>  <li>action = Operation code</li> <li>category_name = name of ticket category</li> </ul> ",
+        "operationId": "ListTicketCategory",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ticket/subcat/": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "List ticket subcat",
+        "description": "  <b>Function :</b><br /> returns list of ticket categories<br /> <br />  <b>List of fields returned :</b>  <ul>  <li>code: 0= success 1=error </li>  <li>type: success=success error=error</li>  <li>action = Operation code</li> <li>category_id = name of ticket category</li> <li>subcat_name = name of ticket subcat</li> </ul> ",
+        "operationId": "ListTicketSubcat",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ticket/place/": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "List ticket place",
+        "description": "  <b>Function :</b><br /> returns list of ticket category<br /> <br />  <b>List of fields returned :</b>  <ul>  <li>code: 0= success 1=error </li>  <li>type: success=success error=error</li>  <li>action = Operation code</li> <li>place_name = name of ticket place</li> </ul> ",
+        "operationId": "ListTicketPlace",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/user/{user_id}": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "view user",
+        "description": "  <b>Function :</b><br /> returns all user informations according to its number (user_id)<br /> <br />  <b>List of fields returned :</b>  <ul>  <li>code: 0= success 1=error </li>  <li>type: success=success error=error</li>  <li>action = Operation code</li>  <li>firstname = firstname</li>  <li>lastname = lastname</li>  <li>mail = mail</li>  <li>phone = phone</li>  <li>mobile = mobile</li>  <li>fax = fax</li>  <li>function = function</li>  <li>profile = profile id</li>  </ul> ",
+        "operationId": "GetUserInformations",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "User Id",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "API error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    }
+  },
+  "securityDefinitions": {
+    "api_key": {
+      "type": "apiKey",
+      "name": "X-API-KEY",
+      "in": "header"
+    }
+  }
+}
