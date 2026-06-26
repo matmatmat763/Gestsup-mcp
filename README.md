@@ -1,41 +1,106 @@
 # GestSup MCP
 
-Documentation de l'**API REST de GestSup** et plan d'implémentation d'un
-**serveur MCP** (Model Context Protocol) pour cette application de gestion de
-tickets.
+Serveur **MCP (Model Context Protocol)** pour piloter les **tickets GestSup**
+depuis un agent LLM (Claude Desktop, Claude Code, etc.), accompagné d'une
+**documentation complète de l'API REST GestSup**.
 
-## Contenu
+## Sommaire
 
-| Document | Description |
+| Élément | Description |
 |---|---|
-| [`docs/gestsup-api.md`](docs/gestsup-api.md) | **Documentation complète de l'API REST GestSup**, reconstruite à partir du code source (auth, endpoints, requêtes/réponses, pièges, modèle de données, exemples cURL). |
-| [`docs/mcp-server-plan.md`](docs/mcp-server-plan.md) | **Plan d'implémentation** d'un serveur MCP exposant l'API GestSup à un agent LLM (architecture, tools, sécurité, tests, feuille de route). |
-| [`docs/reference/swagger-v1-3.2.55.json`](docs/reference/swagger-v1-3.2.55.json) | Le `swagger.json` d'origine de GestSup (fourni pour référence — **incomplet**, cf. la doc). |
+| **Serveur MCP** (`src/`) | 6 outils de gestion de tickets, prêts à brancher sur un client MCP. |
+| [`docs/gestsup-api.md`](docs/gestsup-api.md) | Documentation complète de l'API REST GestSup, reconstruite depuis le code source. |
+| [`docs/mcp-server-plan.md`](docs/mcp-server-plan.md) | Plan d'architecture détaillé du serveur. |
+| [`docs/reference/swagger-v1-3.2.55.json`](docs/reference/swagger-v1-3.2.55.json) | Swagger d'origine (incomplet, fourni pour référence). |
 
-## Contexte & provenance des données
+## Outils MCP exposés
 
-- L'API officielle de GestSup est très peu documentée ; cette doc comble ce
-  manque en s'appuyant directement sur le code.
-- **Version analysée : GestSup 3.2.55.** La version 3.2.60 visée n'a pas pu
-  être téléchargée (le domaine `gestsup.fr` est bloqué par la politique réseau
-  de l'environnement de travail). Le code a donc été étudié depuis le mirroir
-  public le plus récent,
-  [`DeltaForce53/gestsup-3.2.55`](https://github.com/DeltaForce53/gestsup-3.2.55).
-- L'API évolue très peu entre versions mineures : la doc est valable à ~99 %
-  pour la 3.2.60. La section *« Écarts possibles 3.2.55 → 3.2.60 »* de la doc
-  liste les points à revalider sur l'instance cible.
+| Outil | Rôle |
+|---|---|
+| `gestsup_create_ticket` | Créer un ticket (titre, description, type, email demandeur). |
+| `gestsup_get_ticket` | Lire un ticket + son fil de résolution. |
+| `gestsup_add_ticket_comment` | Ajouter un commentaire à un ticket (avec vérification d'existence). |
+| `gestsup_find_tickets_by_user` | Lister les tickets d'un demandeur (tri + pagination). |
+| `gestsup_get_user` | Lire la fiche d'un utilisateur. |
+| `gestsup_list_referential` | Lister types / catégories / sous-catégories / lieux. |
 
-## En bref : ce que l'API GestSup permet (3.2.55)
+> Périmètre = ce que l'API GestSup permet réellement (création de ticket,
+> commentaires, lecture). La modification d'état, l'affectation et la gestion
+> des équipements ne sont **pas** exposées par l'API GestSup (cf. la doc).
 
-**Fonctionnel** : créer un ticket · lire un ticket + son fil de résolution ·
-ajouter un commentaire · lister les tickets d'un demandeur · lire une fiche
-utilisateur · récupérer les référentiels (types / catégories / sous-catégories
-/ lieux).
+## Pré-requis côté GestSup
 
-**Non disponible** (endpoints présents mais désactivés → HTTP 405) : modifier /
-supprimer un ticket, gérer les utilisateurs. Pas de gestion des équipements via
-l'API.
+1. **API activée** : Administration → Paramètres → Connecteurs → onglet **API**.
+2. Une **clé d'API** générée (longue chaîne hexadécimale).
+3. Accès en **HTTPS** (l'API refuse tout port ≠ 443).
+4. Si une **liste blanche d'IP** est configurée, l'IP du serveur MCP doit y figurer.
 
-> ⚠️ Le `swagger.json` embarqué dans GestSup sous-documente fortement l'API
-> (auth partielle, modèles de réponse vides, base path erroné, endpoints
-> masqués). **Référez-vous à `docs/gestsup-api.md`.**
+## Installation
+
+```bash
+npm install
+npm run build
+```
+
+## Configuration
+
+Variables d'environnement (voir [`.env.example`](.env.example)) :
+
+| Variable | Requis | Défaut | Description |
+|---|---|---|---|
+| `GESTSUP_BASE_URL` | ✅ | — | URL de l'instance, sans `/api/v1` (HTTPS). |
+| `GESTSUP_API_KEY` | ✅ | — | Clé d'API GestSup (**secret**). |
+| `GESTSUP_AUTH_MODE` | ❌ | `header` | `header` (X-API-KEY) ou `basic`. |
+| `GESTSUP_TIMEOUT_MS` | ❌ | `15000` | Timeout HTTP (ms). |
+| `GESTSUP_DEFAULT_USER_ID` | ❌ | — | Auteur par défaut des commentaires. |
+| `GESTSUP_ALLOW_WRITES` | ❌ | `true` | `false` = lecture seule (kill-switch). |
+
+## Brancher sur Claude Desktop
+
+Dans `claude_desktop_config.json` :
+
+```json
+{
+  "mcpServers": {
+    "gestsup": {
+      "command": "node",
+      "args": ["/chemin/absolu/vers/Gestsup-mcp/dist/index.js"],
+      "env": {
+        "GESTSUP_BASE_URL": "https://support.exemple.fr",
+        "GESTSUP_API_KEY": "votre-cle",
+        "GESTSUP_DEFAULT_USER_ID": "1"
+      }
+    }
+  }
+}
+```
+
+## Développement & tests
+
+```bash
+npm run typecheck   # vérification des types
+npm test            # tests unitaires (vitest, sans instance GestSup)
+npm run dev         # compilation en watch
+```
+
+Inspecter le serveur avec l'outil officiel :
+
+```bash
+npx @modelcontextprotocol/inspector node dist/index.js
+```
+
+## Notes importantes
+
+- **Version de l'API** : la doc et le client sont basés sur **GestSup 3.2.55**
+  (la 3.2.60 visée n'a pas pu être téléchargée — `gestsup.fr` bloqué par la
+  politique réseau ; source = mirroir public `DeltaForce53/gestsup-3.2.55`).
+  L'API évolue très peu entre versions mineures ; voir la section *« Écarts
+  possibles 3.2.55 → 3.2.60 »* de la doc pour les points à revalider.
+- Le serveur **gomme les pièges de l'API** : décodage HTML des textes,
+  pagination par numéro de page (masque le `offset` non trivial), gestion fine
+  des erreurs 403/404/405, kill-switch d'écriture.
+- La **clé d'API n'est jamais journalisée**.
+
+## Licence
+
+MIT.
