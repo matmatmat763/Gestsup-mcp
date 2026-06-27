@@ -70,6 +70,22 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 | `GESTSUP_TIMEOUT_MS` | ❌ | `15000` | Timeout HTTP (ms). |
 | `GESTSUP_DEFAULT_USER_ID` | ❌ | — | Auteur par défaut des commentaires. |
 | `GESTSUP_ALLOW_WRITES` | ❌ | `true` | `false` = lecture seule (kill-switch). |
+| `GESTSUP_INSECURE_TLS` | ❌ | `false` | `true` = ignore la vérification du certificat TLS (**test local uniquement**, ex. stack Docker auto-signé). |
+
+## Tester en local sans risque (Docker)
+
+Le dossier [`docker/`](docker/) monte une instance **GestSup jetable** avec des
+**données d'exemple** et l'API activée, pour essayer le serveur MCP sans toucher
+à ta production :
+
+```bash
+cd docker
+./fetch-source.sh
+docker compose up -d --build
+```
+
+Interface web : http://localhost:8080 (`admin` / `admin`). Voir le
+[README du stack](docker/README.md) pour brancher le MCP dessus.
 
 ## Brancher sur Claude Desktop
 

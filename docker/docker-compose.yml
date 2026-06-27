@@ -1,0 +1,41 @@
+name: gestsup-test
+
+# Stack de test local : GestSup (PHP/Apache) + MariaDB, pré-rempli avec un jeu
+# de données d'exemple et l'API activée. À utiliser avec le serveur MCP.
+#
+# Avant le premier lancement : ./fetch-source.sh   (récupère le code GestSup)
+# Puis : docker compose up -d --build
+#
+# Accès :
+#   - Interface web : http://localhost:8080  (admin / admin)
+#   - API (HTTPS)   : https://localhost:8443/api/v1/...   clé : voir db/init/10-config.sql
+
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: gestsup
+      MARIADB_USER: gestsup
+      MARIADB_PASSWORD: gestsup
+      MARIADB_ROOT_PASSWORD: rootpwd
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - gestsup-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  web:
+    build: ./web
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+      - "8443:443"
+    restart: unless-stopped
+
+volumes:
+  gestsup-db:

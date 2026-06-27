@@ -1,0 +1,3 @@
+# Code source GestSup récupéré par fetch-source.sh (non redistribué ici)
+web/src/
+db/init/00-skeleton.sql

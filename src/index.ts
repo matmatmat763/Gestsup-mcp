@@ -15,6 +15,13 @@ async function main(): Promise<void> {
     }
   })();
 
+  if (cfg.insecureTls) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    console.error(
+      "[gestsup-mcp] ⚠️  Vérification TLS DÉSACTIVÉE (GESTSUP_INSECURE_TLS) — à n'utiliser qu'en test local.",
+    );
+  }
+
   const client = new GestsupClient(cfg);
   const server = new McpServer({ name: "gestsup-mcp", version: "0.1.0" });
   registerTools(server, client, cfg);

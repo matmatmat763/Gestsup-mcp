@@ -17,6 +17,8 @@ const ConfigSchema = z.object({
   defaultUserId: z.number().int().positive().optional(),
   /** Kill-switch : si false, les opérations d'écriture sont refusées localement. */
   allowWrites: z.boolean().default(true),
+  /** Test uniquement : désactive la vérification du certificat TLS (auto-signé local). */
+  insecureTls: z.boolean().default(false),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -35,6 +37,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     allowWrites: env.GESTSUP_ALLOW_WRITES
       ? env.GESTSUP_ALLOW_WRITES.toLowerCase() !== "false"
       : true,
+    insecureTls: env.GESTSUP_INSECURE_TLS
+      ? env.GESTSUP_INSECURE_TLS.toLowerCase() === "true"
+      : false,
   });
 
   // L'API GestSup refuse tout ce qui n'est pas le port 443 : on impose HTTPS.
