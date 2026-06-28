@@ -216,6 +216,33 @@ describe("GestsupClient.addComment (plugin gestsup_mcp)", () => {
   });
 });
 
+describe("GestsupClient.createTicketFull (plugin gestsup_mcp)", () => {
+  it("envoie les champs au plugin et renvoie l'id créé", async () => {
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      type: "success",
+      action: "TicketCreate",
+      ticket_id: "42",
+      ticket_url: "https://gs/index.php?page=ticket&id=42",
+      user: "20",
+      state: "5",
+      mail: "sent",
+    });
+    const client = new GestsupClient({ ...cfg, defaultUserId: 10 }, impl);
+    const r = await client.createTicketFull({
+      title: "Panne",
+      description: "Détail",
+      requester_email: "marie@demo.local",
+      category_id: 1,
+      priority_id: 2,
+      time_hope: 60,
+    });
+    expect(r.ticket_id).toBe("42");
+    expect(calls[0].url).toContain("/plugins/gestsup_mcp/ticket_create.php");
+    expect(calls[0].method).toBe("POST");
+  });
+});
+
 describe("GestsupClient.closeTicket (plugin gestsup_mcp)", () => {
   it("clôture avec cause + procédure et mappe la réponse", async () => {
     const { impl, calls } = fakeFetch(200, {

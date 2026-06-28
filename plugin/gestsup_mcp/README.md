@@ -216,6 +216,23 @@ résolu (thread type 4 + `date_res`) puis le demandeur est notifié.
 
 ✱ Fournir `procedure_id` **et/ou** `procedure_text` (au moins un).
 
+### `POST /plugins/gestsup_mcp/ticket_create.php`
+
+Création complète d'un ticket (réplique l'INSERT natif + notification « nouveau
+ticket »). Le demandeur est donné par `requester_id` **ou** `requester_email`.
+
+| Param | Requis | Description |
+|---|---|---|
+| `author_id` | ✅ | Créateur (technicien) |
+| `title`, `description` | ✅ | Sujet et description |
+| `requester_id` / `requester_email` | ❌ | Demandeur (id, ou email résolu en utilisateur) |
+| `type`, `category`, `subcat`, `priority`, `criticality`, `place` | ❌ | IDs **validés contre l'instance** |
+| `technician_id` / `group_id` | ❌ | Affectation initiale |
+| `time`, `time_hope` | ❌ | Temps passé / prévu (minutes) |
+| `date_hope` | ❌ | Échéance (`YYYY-MM-DD`) |
+| `state` | ❌ | État initial (défaut : `ticket_default_state` de l'instance) |
+| `notify` | ❌ | Notifier (défaut `1`) |
+
 ## Sécurité
 
 - Mêmes contrôles que l'API native (clé API, HTTPS/443, liste blanche d'IP) +

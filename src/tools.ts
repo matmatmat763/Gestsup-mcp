@@ -62,6 +62,66 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     },
   );
 
+  // ------------------------------ création complète (plugin gestsup_mcp)
+  server.registerTool(
+    "gestsup_create_ticket_full",
+    {
+      title: "Créer un ticket (complet)",
+      description:
+        "Crée un ticket en renseignant demandeur, catégorie, sous-catégorie, priorité, criticité, type, titre, description, temps passé/prévu, technicien/groupe. Les valeurs de liste sont des IDs À RÉCUPÉRER via gestsup_list_referential (jamais devinés). Le demandeur est donné par requester_id OU requester_email. Notifie selon les paramètres GestSup. Nécessite le plugin « gestsup_mcp ».",
+      inputSchema: {
+        title: z.string().min(1).describe("Titre du ticket."),
+        description: z.string().min(1).describe("Description."),
+        requester_id: z.number().int().positive().optional().describe("ID du demandeur (tusers)."),
+        requester_email: z.string().email().optional().describe("Email du demandeur (résolu en utilisateur)."),
+        type_id: z.number().int().positive().optional().describe("ID de type (kind=type)."),
+        category_id: z.number().int().positive().optional().describe("ID de catégorie (kind=category)."),
+        subcat_id: z.number().int().positive().optional().describe("ID de sous-catégorie (kind=subcat)."),
+        priority_id: z.number().int().positive().optional().describe("ID de priorité (kind=priority)."),
+        criticality_id: z.number().int().positive().optional().describe("ID de criticité (kind=criticality)."),
+        place_id: z.number().int().positive().optional().describe("ID de lieu (kind=place)."),
+        technician_id: z.number().int().positive().optional().describe("Technicien assigné (kind=technician)."),
+        group_id: z.number().int().positive().optional().describe("Groupe assigné (kind=group)."),
+        time: z.number().int().nonnegative().optional().describe("Temps passé (minutes)."),
+        time_hope: z.number().int().nonnegative().optional().describe("Temps prévu (minutes)."),
+        date_hope: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional()
+          .describe("Échéance souhaitée (YYYY-MM-DD)."),
+        notify: z.boolean().default(true).describe("Notifier (nouveau ticket) selon paramètres GestSup."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      if (!cfg.allowWrites) {
+        return fail(new GestsupError("Écriture désactivée (GESTSUP_ALLOW_WRITES=false)."));
+      }
+      try {
+        const r = await client.createTicketFull({
+          title: args.title,
+          description: args.description,
+          requester_id: args.requester_id,
+          requester_email: args.requester_email,
+          type_id: args.type_id,
+          category_id: args.category_id,
+          subcat_id: args.subcat_id,
+          priority_id: args.priority_id,
+          criticality_id: args.criticality_id,
+          place_id: args.place_id,
+          technician_id: args.technician_id,
+          group_id: args.group_id,
+          time: args.time,
+          time_hope: args.time_hope,
+          date_hope: args.date_hope,
+          notify: args.notify,
+        });
+        return ok(`Ticket ${r.ticket_id} créé (état ${r.state}, mail: ${r.mail}).`, r);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
   // -------------------------------------------------------------- get ticket
   server.registerTool(
     "gestsup_get_ticket",

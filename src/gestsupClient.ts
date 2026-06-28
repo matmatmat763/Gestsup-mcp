@@ -206,6 +206,73 @@ export class GestsupClient {
     };
   }
 
+  /**
+   * Création complète d'un ticket via le plugin (demandeur, catégorie, priorité,
+   * type, temps, technicien…). Valeurs de liste validées contre l'instance.
+   */
+  async createTicketFull(input: {
+    title: string;
+    description: string;
+    requester_id?: number;
+    requester_email?: string;
+    type_id?: number;
+    category_id?: number;
+    subcat_id?: number;
+    priority_id?: number;
+    criticality_id?: number;
+    place_id?: number;
+    technician_id?: number;
+    group_id?: number;
+    time?: number;
+    time_hope?: number;
+    date_hope?: string;
+    state_id?: number;
+    notify?: boolean;
+  }): Promise<{ ticket_id: string; ticket_url: string; user: string; state: string; mail: string }> {
+    if (!this.cfg.defaultUserId) {
+      throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (créateur du ticket).");
+    }
+    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_create.php", {
+      urlencoded: true,
+      form: {
+        author_id: this.cfg.defaultUserId,
+        title: input.title,
+        description: input.description,
+        requester_id: input.requester_id,
+        requester_email: input.requester_email,
+        type: input.type_id,
+        category: input.category_id,
+        subcat: input.subcat_id,
+        priority: input.priority_id,
+        criticality: input.criticality_id,
+        place: input.place_id,
+        technician_id: input.technician_id,
+        group_id: input.group_id,
+        time: input.time,
+        time_hope: input.time_hope,
+        date_hope: input.date_hope,
+        state: input.state_id,
+        notify: input.notify === false ? 0 : 1,
+      },
+    });
+    if (status === 404 && !(body && typeof body === "object" && "ticket_id" in body)) {
+      throw new GestsupError(
+        "Endpoint plugin introuvable (404). Plugin « gestsup_mcp » installé ?",
+        404,
+        "TicketCreate",
+      );
+    }
+    if (!isSuccess(body)) throw mapError(status, body, "TicketCreate");
+    const b = body as Record<string, unknown>;
+    return {
+      ticket_id: String(b.ticket_id ?? ""),
+      ticket_url: String(b.ticket_url ?? ""),
+      user: String(b.user ?? ""),
+      state: String(b.state ?? ""),
+      mail: String(b.mail ?? ""),
+    };
+  }
+
   async getTicket(id: number): Promise<Ticket> {
     const { status, body } = await this.call("GET", `/ticket/${id}`);
     if (!isSuccess(body)) {
