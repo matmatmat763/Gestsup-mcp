@@ -216,6 +216,57 @@ describe("GestsupClient.addComment (plugin gestsup_mcp)", () => {
   });
 });
 
+describe("GestsupClient.setState (plugin gestsup_mcp)", () => {
+  it("poste au plugin ticket_state.php et mappe la résolution", async () => {
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      type: "success",
+      action: "TicketState",
+      ticket_id: "5",
+      old_state: "1",
+      new_state: "3",
+      state_name: "Résolu",
+      resolved: true,
+      comment: "added",
+      mail: "sent",
+    });
+    const client = new GestsupClient({ ...cfg, defaultUserId: 11 }, impl);
+    const r = await client.setState({ ticket_id: 5, state_id: 3, text: "ok" });
+    expect(r.resolved).toBe(true);
+    expect(r.state_name).toBe("Résolu");
+    expect(calls[0].url).toContain("/plugins/gestsup_mcp/ticket_state.php");
+    expect(calls[0].method).toBe("POST");
+  });
+});
+
+describe("GestsupClient.listReferential (états via plugin)", () => {
+  it("lit les états dynamiquement via le plugin", async () => {
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      type: "success",
+      kind: "state",
+      items: [{ id: 3, name: "Résolu", number: 5, meta: 0, hidden: 0 }],
+    });
+    const client = new GestsupClient(cfg, impl);
+    const r = await client.listReferential("state");
+    expect(r[0].id).toBe("3");
+    expect(r[0].name).toBe("Résolu");
+    expect(r[0].number).toBe(5);
+    expect(calls[0].url).toContain("/plugins/gestsup_mcp/referentials.php");
+    expect(calls[0].url).toContain("kind=state");
+  });
+
+  it("conserve l'API native pour les types", async () => {
+    const { impl, calls } = fakeFetch(200, [
+      { code: "0", action: "TicketTypeList", type_id: 1, type_name: "Incident" },
+    ]);
+    const client = new GestsupClient(cfg, impl);
+    const r = await client.listReferential("type");
+    expect(r).toEqual([{ id: "1", name: "Incident" }]);
+    expect(calls[0].url).toContain("/api/v1/ticket/type/");
+  });
+});
+
 describe("GestsupClient (auth basic)", () => {
   it("envoie l'en-tête Authorization Basic", async () => {
     const { impl, calls } = fakeFetch(200, { code: 0, ticket_id: 1, ticket_url: "u", message: "m" });

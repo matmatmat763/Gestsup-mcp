@@ -191,6 +191,58 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     },
   );
 
+  // ----------------------------------- changement d'état (plugin gestsup_mcp)
+  server.registerTool(
+    "gestsup_set_ticket_state",
+    {
+      title: "Changer l'état d'un ticket",
+      description:
+        "Change l'état d'un ticket (ex. résoudre, rejeter, mettre en cours…). L'état est un ID À RÉCUPÉRER via gestsup_list_referential kind=state (jamais deviné). Passer à l'état résolu enregistre la date de résolution. Notifie le demandeur selon les paramètres GestSup. Nécessite le plugin « gestsup_mcp ».",
+      inputSchema: {
+        ticket_id: z.number().int().positive().describe("Numéro du ticket."),
+        state_id: z
+          .number()
+          .int()
+          .nonnegative()
+          .describe("ID de l'état cible (voir gestsup_list_referential kind=state)."),
+        comment: z
+          .string()
+          .optional()
+          .describe("Commentaire/résolution à joindre au changement d'état."),
+        internal: z
+          .boolean()
+          .default(false)
+          .describe("true = le commentaire joint est une note interne (privée)."),
+        time: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("Temps passé à enregistrer (minutes)."),
+        notify: z.boolean().default(true).describe("Notifier le demandeur (selon paramètres GestSup)."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      if (!cfg.allowWrites) {
+        return fail(new GestsupError("Écriture désactivée (GESTSUP_ALLOW_WRITES=false)."));
+      }
+      try {
+        const r = await client.setState({
+          ticket_id: args.ticket_id,
+          state_id: args.state_id,
+          text: args.comment,
+          isPrivate: args.internal,
+          time: args.time,
+          notify: args.notify,
+        });
+        const verb = r.resolved ? "résolu" : `passé à « ${r.state_name} »`;
+        return ok(`Ticket ${args.ticket_id} ${verb} (notification: ${r.mail}).`, r);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
   // -------------------------------- recherche de tickets (plugin gestsup_mcp)
   server.registerTool(
     "gestsup_search_tickets",
@@ -261,10 +313,10 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     {
       title: "Lister un référentiel",
       description:
-        "Liste un référentiel de tickets : types, catégories, sous-catégories ou lieux. Utile pour récupérer les ID nécessaires à la création de tickets.",
+        "Liste un référentiel défini par l'instance GestSup : types, catégories, sous-catégories, lieux, états, priorités, criticités ou causes de résolution. Récupère les ID/valeurs RÉELS de l'instance (jamais codés en dur). À utiliser avant de créer/mettre à jour un ticket. (états/priorités/criticités/causes nécessitent le plugin « gestsup_mcp ».)",
       inputSchema: {
         kind: z
-          .enum(["type", "category", "subcat", "place"])
+          .enum(["type", "category", "subcat", "place", "state", "priority", "criticality", "cause"])
           .describe("Référentiel à lister."),
       },
     },

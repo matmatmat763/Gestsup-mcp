@@ -78,6 +78,8 @@ function mcp_native_notify($root, $db, $rparameters, $globalrow, $ruser, $postOv
     $_GET['id'] = $globalrow['id'];
     // Variables d'init attendues (présentes dans le contexte du contrôleur natif)
     $datetime = date('Y-m-d H:i:s');
+    if (!isset($_POST['action'])) { $_POST['action'] = ''; }
+    if (!isset($_GET['action'])) { $_GET['action'] = ''; }
     $t_group = isset($_POST['t_group']) ? $_POST['t_group'] : '';
     $autoclose = 0;
     $current_user_member_of_tech_group = false;

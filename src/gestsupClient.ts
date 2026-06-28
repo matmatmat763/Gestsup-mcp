@@ -12,13 +12,19 @@ import {
 
 type Json = Record<string, unknown> | unknown[] | null;
 
-export type ReferentialKind = "type" | "category" | "subcat" | "place";
+/** Référentiels via l'API native. */
+export type NativeReferentialKind = "type" | "category" | "subcat" | "place";
+/** Référentiels via le plugin (définis par l'instance, lus en base). */
+export type PluginReferentialKind = "state" | "priority" | "criticality" | "cause";
+export type ReferentialKind = NativeReferentialKind | PluginReferentialKind;
 
 export interface ReferentialItem {
   id: string;
   name: string;
   /** Pour les sous-catégories : id de la catégorie parente. */
   category_id?: string;
+  /** Métadonnées éventuelles (états : number/meta/hidden ; priorités : color…). */
+  [extra: string]: unknown;
 }
 
 export interface CreateTicketInput {
@@ -273,34 +279,114 @@ export class GestsupClient {
   // ------------------------------------------------------------- Référentiels
 
   async listReferential(kind: ReferentialKind): Promise<ReferentialItem[]> {
-    const pathByKind: Record<ReferentialKind, string> = {
+    const nativePaths: Record<NativeReferentialKind, string> = {
       type: "/ticket/type/",
       category: "/ticket/category/",
       subcat: "/ticket/subcat/",
       place: "/ticket/place/",
     };
-    const { status, body } = await this.call("GET", pathByKind[kind]);
-    if (!Array.isArray(body)) {
-      if (body && !isSuccess(body)) throw mapError(status, body, "Referential");
-      return [];
-    }
-    return body.map((raw) => {
-      const r = raw as Record<string, unknown>;
-      switch (kind) {
-        case "type":
-          return { id: String(r.type_id ?? ""), name: String(r.type_name ?? "") };
-        case "category":
-          return { id: String(r.category_id ?? ""), name: String(r.category_name ?? "") };
-        case "place":
-          return { id: String(r.place_id ?? ""), name: String(r.place_name ?? "") };
-        case "subcat":
-          return {
-            id: String(r.subcat_id ?? ""),
-            name: String(r.subcat_name ?? ""),
-            category_id: String(r.category_id ?? ""),
-          };
+
+    // Référentiels exposés par l'API native
+    if (Object.prototype.hasOwnProperty.call(nativePaths, kind)) {
+      const { status, body } = await this.call("GET", nativePaths[kind as NativeReferentialKind]);
+      if (!Array.isArray(body)) {
+        if (body && !isSuccess(body)) throw mapError(status, body, "Referential");
+        return [];
       }
+      return body.map((raw) => {
+        const r = raw as Record<string, unknown>;
+        switch (kind) {
+          case "category":
+            return { id: String(r.category_id ?? ""), name: String(r.category_name ?? "") };
+          case "place":
+            return { id: String(r.place_id ?? ""), name: String(r.place_name ?? "") };
+          case "subcat":
+            return {
+              id: String(r.subcat_id ?? ""),
+              name: String(r.subcat_name ?? ""),
+              category_id: String(r.category_id ?? ""),
+            };
+          default: // type
+            return { id: String(r.type_id ?? ""), name: String(r.type_name ?? "") };
+        }
+      });
+    }
+
+    // Référentiels définis par l'instance (état/priorité/criticité/cause), via le plugin
+    const { status, body } = await this.callAbsolute("GET", "/plugins/gestsup_mcp/referentials.php", {
+      query: { kind },
     });
+    if (status === 404) {
+      throw new GestsupError(
+        "Plugin gestsup_mcp non installé (référentiels étendus indisponibles).",
+        404,
+        "Referential",
+      );
+    }
+    if (!isSuccess(body)) throw mapError(status, body, "Referential");
+    const items = Array.isArray((body as Record<string, unknown>).items)
+      ? ((body as Record<string, unknown>).items as Record<string, unknown>[])
+      : [];
+    return items.map((r) => {
+      const out: ReferentialItem = { id: String(r.id ?? ""), name: String(r.name ?? "") };
+      for (const k of Object.keys(r)) {
+        if (k !== "id" && k !== "name") out[k] = r[k];
+      }
+      return out;
+    });
+  }
+
+  /**
+   * Change l'état d'un ticket via le plugin (résoudre, rejeter… l'état est un id
+   * de la liste de l'instance). Déclenche la notification native de GestSup.
+   */
+  async setState(input: {
+    ticket_id: number;
+    state_id: number;
+    text?: string;
+    isPrivate?: boolean;
+    time?: number;
+    notify?: boolean;
+  }): Promise<{
+    old_state: string;
+    new_state: string;
+    state_name: string;
+    resolved: boolean;
+    comment: string;
+    mail: string;
+  }> {
+    if (!this.cfg.defaultUserId) {
+      throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (auteur de l'action).");
+    }
+    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_state.php", {
+      urlencoded: true,
+      form: {
+        author_id: this.cfg.defaultUserId,
+        ticket_id: input.ticket_id,
+        state_id: input.state_id,
+        text: input.text,
+        private: input.isPrivate ? 1 : 0,
+        time: input.time ?? 0,
+        notify: input.notify === false ? 0 : 1,
+      },
+    });
+    if (status === 404 && !(body && typeof body === "object" && "new_state" in body)) {
+      throw new GestsupError(
+        "Endpoint plugin introuvable (404) ou ticket inexistant. Plugin « gestsup_mcp » installé ?",
+        404,
+        "TicketState",
+      );
+    }
+    if (!isSuccess(body)) throw mapError(status, body, "TicketState");
+    const b = body as Record<string, unknown>;
+    return {
+      old_state: String(b.old_state ?? ""),
+      new_state: String(b.new_state ?? ""),
+      state_name: String(b.state_name ?? ""),
+      resolved: Boolean(b.resolved),
+      comment: String(b.comment ?? ""),
+      mail: String(b.mail ?? ""),
+    };
   }
 
   // ----------------------------- Plugin gestsup_mcp (API étendue, lecture) ---

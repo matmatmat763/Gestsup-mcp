@@ -122,6 +122,42 @@ Le mail n'est envoyé que si le **connecteur SMTP est configuré** (même garde 
 `core/ticket.php`). L'écriture est **transactionnelle** et l'endpoint renvoie
 l'état (`thread_id`, `private`, `notified`, `mail`).
 
+### `GET /plugins/gestsup_mcp/referentials.php`
+
+Listes de référence **définies par l'instance** (aucune valeur codée en dur).
+
+| Param `kind` | Renvoie (depuis la base) |
+|---|---|
+| `state` | États (`tstates`) : id, name, number, meta, hidden |
+| `priority` | Priorités (`tpriority`) : id, name, number, color |
+| `criticality` | Criticités (`tcriticality`) : id, name, number, color |
+| `cause` | Causes de résolution (`ttypes_answer`, non désactivées) |
+
+```bash
+curl "https://serveur/plugins/gestsup_mcp/referentials.php?kind=state" -H "X-API-KEY: CLE"
+```
+
+### `POST /plugins/gestsup_mcp/ticket_state.php`
+
+Change l'état d'un ticket (résoudre, rejeter, en cours…). L'état est un **id de
+la liste de l'instance** (cf. `referentials.php?kind=state`). Réplique
+`core/ticket.php` : thread type 5 (changement) ou type 4 (clôture) + `date_res`,
+puis **notification native**.
+
+| Param | Requis | Description |
+|---|---|---|
+| `author_id` | ✅ | Technicien auteur |
+| `ticket_id` | ✅ | Numéro du ticket |
+| `state_id` | ✅ | État cible (id existant dans `tstates`) |
+| `text` | ❌ | Commentaire/résolution joint |
+| `private` | ❌ | `1` = note interne |
+| `time` | ❌ | Temps passé (minutes) |
+| `notify` | ❌ | Notifier le demandeur (défaut `1`) |
+
+> Convention interne de GestSup répliquée : l'état **id 3 = « résolu »** déclenche
+> la date de résolution et la notification de clôture (comme le contrôleur natif).
+> Le reste des états/valeurs n'est jamais codé en dur : tout vient de l'instance.
+
 ## Sécurité
 
 - Mêmes contrôles que l'API native (clé API, HTTPS/443, liste blanche d'IP) +
