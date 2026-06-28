@@ -21,7 +21,8 @@ export type PluginReferentialKind =
   | "criticality"
   | "cause"
   | "group"
-  | "technician";
+  | "technician"
+  | "procedure";
 export type ReferentialKind = NativeReferentialKind | PluginReferentialKind;
 
 export interface ReferentialItem {
@@ -340,6 +341,52 @@ export class GestsupClient {
       }
       return out;
     });
+  }
+
+  /**
+   * Clôture conforme d'un ticket : exige une cause (ajoutée en fin de
+   * description) et une procédure (id GestSup et/ou texte). Résout le ticket
+   * (état résolu + date_res) et déclenche la notification native de clôture.
+   */
+  async closeTicket(input: {
+    ticket_id: number;
+    cause: string;
+    procedure_id?: number;
+    procedure_text?: string;
+    resolution?: string;
+    time?: number;
+    notify?: boolean;
+  }): Promise<{ resolved: boolean; procedure: string; mail: string }> {
+    if (!this.cfg.defaultUserId) {
+      throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (auteur de l'action).");
+    }
+    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_close.php", {
+      urlencoded: true,
+      form: {
+        author_id: this.cfg.defaultUserId,
+        ticket_id: input.ticket_id,
+        cause: input.cause,
+        procedure_id: input.procedure_id,
+        procedure_text: input.procedure_text,
+        resolution: input.resolution,
+        time: input.time ?? 0,
+        notify: input.notify === false ? 0 : 1,
+      },
+    });
+    if (status === 404 && !(body && typeof body === "object" && "resolved" in body)) {
+      throw new GestsupError(
+        "Endpoint plugin introuvable (404) ou ticket inexistant. Plugin « gestsup_mcp » installé ?",
+        404,
+        "TicketClose",
+      );
+    }
+    if (!isSuccess(body)) throw mapError(status, body, "TicketClose");
+    const b = body as Record<string, unknown>;
+    return {
+      resolved: Boolean(b.resolved),
+      procedure: String(b.procedure ?? ""),
+      mail: String(b.mail ?? ""),
+    };
   }
 
   /**

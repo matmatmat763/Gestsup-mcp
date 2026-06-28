@@ -56,6 +56,19 @@ switch ($kind) {
             $items[] = array('id' => $r['id'], 'name' => $r['name'], 'type' => $r['type']);
         }
         break;
+    case 'procedure':
+        // Procédures (base de connaissances) définies par l'instance
+        $where = "`disable`=0";
+        $params = array();
+        if (isset($_GET['category']) && is_numeric($_GET['category'])) {
+            $where .= " AND `category`=:cat"; $params['cat'] = intval($_GET['category']);
+        }
+        $qry = $db->prepare("SELECT `id`,`name`,`category`,`subcat` FROM `tprocedures` WHERE $where ORDER BY `name`");
+        $qry->execute($params);
+        foreach ($qry->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $items[] = array('id' => $r['id'], 'name' => $r['name'], 'category' => $r['category'], 'subcat' => $r['subcat']);
+        }
+        break;
     case 'technician':
         // Utilisateurs autorisés à être techniciens (droit ticket_tech), selon l'instance
         $qry = $db->query("SELECT `tusers`.`id`, TRIM(CONCAT(COALESCE(`tusers`.`firstname`,''),' ',COALESCE(`tusers`.`lastname`,''))) AS `name`, `tusers`.`mail`
@@ -68,7 +81,7 @@ switch ($kind) {
         break;
     default:
         header('HTTP/1.1 400 Bad Request');
-        echo json_encode(array('code' => 1, 'type' => 'error', 'message' => "Paramètre kind invalide (state|priority|criticality|cause|group|technician)"), JSON_PRETTY_PRINT);
+        echo json_encode(array('code' => 1, 'type' => 'error', 'message' => "Paramètre kind invalide (state|priority|criticality|cause|group|technician|procedure)"), JSON_PRETTY_PRINT);
         exit;
 }
 

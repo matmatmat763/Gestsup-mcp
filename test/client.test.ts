@@ -216,6 +216,37 @@ describe("GestsupClient.addComment (plugin gestsup_mcp)", () => {
   });
 });
 
+describe("GestsupClient.closeTicket (plugin gestsup_mcp)", () => {
+  it("clôture avec cause + procédure et mappe la réponse", async () => {
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      type: "success",
+      action: "TicketClose",
+      ticket_id: "4",
+      resolved: true,
+      cause_appended: true,
+      procedure: "Réinstallation",
+      mail: "sent",
+    });
+    const client = new GestsupClient({ ...cfg, defaultUserId: 11 }, impl);
+    const r = await client.closeTicket({ ticket_id: 4, cause: "Disque HS", procedure_text: "Remplacement" });
+    expect(r.resolved).toBe(true);
+    expect(calls[0].url).toContain("/plugins/gestsup_mcp/ticket_close.php");
+  });
+
+  it("remonte le refus de clôture non conforme (400)", async () => {
+    const { impl } = fakeFetch(400, {
+      code: 1,
+      type: "error",
+      message: "Clôture non conforme : la CAUSE de résolution est requise.",
+    });
+    const client = new GestsupClient({ ...cfg, defaultUserId: 11 }, impl);
+    await expect(
+      client.closeTicket({ ticket_id: 4, cause: "", procedure_text: "x" }),
+    ).rejects.toThrow(/non conforme/);
+  });
+});
+
 describe("GestsupClient.updateTicket (plugin gestsup_mcp)", () => {
   it("envoie les champs au plugin et mappe la réponse", async () => {
     const { impl, calls } = fakeFetch(200, {

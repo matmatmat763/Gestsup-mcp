@@ -134,6 +134,7 @@ Listes de référence **définies par l'instance** (aucune valeur codée en dur)
 | `cause` | Causes de résolution (`ttypes_answer`, non désactivées) |
 | `group` | Groupes de techniciens (`tgroups`, non désactivés) |
 | `technician` | Utilisateurs autorisés comme techniciens (droit `ticket_tech` de l'instance) |
+| `procedure` | Procédures de résolution (`tprocedures`) ; filtre optionnel `&category=<id>` |
 
 ```bash
 curl "https://serveur/plugins/gestsup_mcp/referentials.php?kind=state" -H "X-API-KEY: CLE"
@@ -194,6 +195,26 @@ notification native.
 | `notify` | ❌ | Notifier le demandeur (défaut `1`) |
 
 ✱ Au moins un champ. Tout id inconnu de l'instance est **refusé** (400).
+
+### `POST /plugins/gestsup_mcp/ticket_close.php`
+
+Clôture **conforme** : exige une **cause** et une **procédure**, sinon refus
+(400). La cause est **ajoutée à la toute fin de la description** du ticket ; la
+résolution (commentaire + procédure) est consignée ; le ticket passe à l'état
+résolu (thread type 4 + `date_res`) puis le demandeur est notifié.
+
+| Param | Requis | Description |
+|---|---|---|
+| `author_id` | ✅ | Technicien auteur |
+| `ticket_id` | ✅ | Numéro du ticket |
+| `cause` | ✅ | Cause de résolution (ajoutée en fin de description) |
+| `procedure_id` | ✱ | Procédure GestSup (`kind=procedure`) |
+| `procedure_text` | ✱ | Procédure en texte libre |
+| `resolution` | ❌ | Commentaire de résolution additionnel |
+| `time` | ❌ | Temps passé (minutes) |
+| `notify` | ❌ | Notifier le demandeur (défaut `1`) |
+
+✱ Fournir `procedure_id` **et/ou** `procedure_text` (au moins un).
 
 ## Sécurité
 

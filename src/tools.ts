@@ -191,6 +191,57 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     },
   );
 
+  // --------------------------------- clôture conforme (plugin gestsup_mcp)
+  server.registerTool(
+    "gestsup_close_ticket",
+    {
+      title: "Clôturer un ticket (conforme)",
+      description:
+        "Clôture un ticket en exigeant la conformité : une CAUSE (ajoutée à la fin de la description du ticket) ET une PROCÉDURE de résolution (procedure_id via gestsup_list_referential kind=procedure, et/ou texte libre). Résout le ticket et notifie le demandeur (clôture). Refuse la clôture si cause ou procédure manquante. Nécessite le plugin « gestsup_mcp ».",
+      inputSchema: {
+        ticket_id: z.number().int().positive().describe("Numéro du ticket."),
+        cause: z.string().min(1).describe("Cause de la résolution (ajoutée en fin de description)."),
+        procedure_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("ID d'une procédure GestSup (kind=procedure)."),
+        procedure_text: z
+          .string()
+          .optional()
+          .describe("Procédure en texte libre (si pas/complément d'une procédure GestSup)."),
+        resolution: z.string().optional().describe("Commentaire de résolution additionnel."),
+        time: z.number().int().nonnegative().optional().describe("Temps passé (minutes)."),
+        notify: z.boolean().default(true).describe("Notifier le demandeur de la clôture."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      if (!cfg.allowWrites) {
+        return fail(new GestsupError("Écriture désactivée (GESTSUP_ALLOW_WRITES=false)."));
+      }
+      if (!args.procedure_id && !args.procedure_text) {
+        return fail(
+          new GestsupError("Clôture non conforme : indiquer une procédure (procedure_id et/ou procedure_text)."),
+        );
+      }
+      try {
+        const r = await client.closeTicket({
+          ticket_id: args.ticket_id,
+          cause: args.cause,
+          procedure_id: args.procedure_id,
+          procedure_text: args.procedure_text,
+          resolution: args.resolution,
+          time: args.time,
+          notify: args.notify,
+        });
+        return ok(`Ticket ${args.ticket_id} clôturé (cause ajoutée en description, mail: ${r.mail}).`, r);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
   // -------------------------- mise à jour de champs (plugin gestsup_mcp)
   server.registerTool(
     "gestsup_update_ticket",
@@ -432,6 +483,7 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
             "cause",
             "group",
             "technician",
+            "procedure",
           ])
           .describe("Référentiel à lister."),
       },
