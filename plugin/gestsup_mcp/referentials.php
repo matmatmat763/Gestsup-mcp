@@ -49,9 +49,26 @@ switch ($kind) {
             $items[] = array('id' => $r['id'], 'name' => $r['name']);
         }
         break;
+    case 'group':
+        // Groupes de techniciens définis par l'instance
+        $qry = $db->query("SELECT `id`,`name`,`type` FROM `tgroups` WHERE `disable`=0 ORDER BY `name`");
+        foreach ($qry->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $items[] = array('id' => $r['id'], 'name' => $r['name'], 'type' => $r['type']);
+        }
+        break;
+    case 'technician':
+        // Utilisateurs autorisés à être techniciens (droit ticket_tech), selon l'instance
+        $qry = $db->query("SELECT `tusers`.`id`, TRIM(CONCAT(COALESCE(`tusers`.`firstname`,''),' ',COALESCE(`tusers`.`lastname`,''))) AS `name`, `tusers`.`mail`
+                           FROM `tusers` JOIN `trights` ON `tusers`.`profile`=`trights`.`profile`
+                           WHERE `trights`.`ticket_tech`!=0 AND `tusers`.`disable`=0 AND `tusers`.`id`!=0
+                           ORDER BY `name`");
+        foreach ($qry->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $items[] = array('id' => $r['id'], 'name' => $r['name'], 'mail' => $r['mail']);
+        }
+        break;
     default:
         header('HTTP/1.1 400 Bad Request');
-        echo json_encode(array('code' => 1, 'type' => 'error', 'message' => "Paramètre kind invalide (state|priority|criticality|cause)"), JSON_PRETTY_PRINT);
+        echo json_encode(array('code' => 1, 'type' => 'error', 'message' => "Paramètre kind invalide (state|priority|criticality|cause|group|technician)"), JSON_PRETTY_PRINT);
         exit;
 }
 

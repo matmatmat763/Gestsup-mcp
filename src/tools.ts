@@ -191,6 +191,53 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     },
   );
 
+  // ---------------------------------------- affectation (plugin gestsup_mcp)
+  server.registerTool(
+    "gestsup_assign_ticket",
+    {
+      title: "Affecter un ticket",
+      description:
+        "Affecte un ticket à un technicien OU à un groupe de techniciens. Fournir technician_id (voir gestsup_list_referential kind=technician) OU group_id (kind=group) — ids de l'instance, jamais devinés. Notifie le technicien/groupe affecté (paramètres GestSup). Nécessite le plugin « gestsup_mcp ».",
+      inputSchema: {
+        ticket_id: z.number().int().positive().describe("Numéro du ticket."),
+        technician_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("ID du technicien à affecter (exclusif avec group_id)."),
+        group_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("ID du groupe de techniciens à affecter (exclusif avec technician_id)."),
+        notify: z.boolean().default(true).describe("Notifier l'affectation (selon paramètres GestSup)."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      if (!cfg.allowWrites) {
+        return fail(new GestsupError("Écriture désactivée (GESTSUP_ALLOW_WRITES=false)."));
+      }
+      if (!args.technician_id && !args.group_id) {
+        return fail(new GestsupError("Préciser technician_id ou group_id."));
+      }
+      try {
+        const r = await client.assign({
+          ticket_id: args.ticket_id,
+          technician_id: args.technician_id,
+          group_id: args.group_id,
+          notify: args.notify,
+        });
+        const cible =
+          r.assigned_to === "technician" ? `technicien ${r.technician}` : `groupe ${r.group}`;
+        return ok(`Ticket ${args.ticket_id} affecté au ${cible} (${r.history}, mail: ${r.mail}).`, r);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
   // ----------------------------------- changement d'état (plugin gestsup_mcp)
   server.registerTool(
     "gestsup_set_ticket_state",
@@ -316,7 +363,18 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
         "Liste un référentiel défini par l'instance GestSup : types, catégories, sous-catégories, lieux, états, priorités, criticités ou causes de résolution. Récupère les ID/valeurs RÉELS de l'instance (jamais codés en dur). À utiliser avant de créer/mettre à jour un ticket. (états/priorités/criticités/causes nécessitent le plugin « gestsup_mcp ».)",
       inputSchema: {
         kind: z
-          .enum(["type", "category", "subcat", "place", "state", "priority", "criticality", "cause"])
+          .enum([
+            "type",
+            "category",
+            "subcat",
+            "place",
+            "state",
+            "priority",
+            "criticality",
+            "cause",
+            "group",
+            "technician",
+          ])
           .describe("Référentiel à lister."),
       },
     },

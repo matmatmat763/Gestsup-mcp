@@ -132,6 +132,8 @@ Listes de référence **définies par l'instance** (aucune valeur codée en dur)
 | `priority` | Priorités (`tpriority`) : id, name, number, color |
 | `criticality` | Criticités (`tcriticality`) : id, name, number, color |
 | `cause` | Causes de résolution (`ttypes_answer`, non désactivées) |
+| `group` | Groupes de techniciens (`tgroups`, non désactivés) |
+| `technician` | Utilisateurs autorisés comme techniciens (droit `ticket_tech` de l'instance) |
 
 ```bash
 curl "https://serveur/plugins/gestsup_mcp/referentials.php?kind=state" -H "X-API-KEY: CLE"
@@ -157,6 +159,24 @@ puis **notification native**.
 > Convention interne de GestSup répliquée : l'état **id 3 = « résolu »** déclenche
 > la date de résolution et la notification de clôture (comme le contrôleur natif).
 > Le reste des états/valeurs n'est jamais codé en dur : tout vient de l'instance.
+
+### `POST /plugins/gestsup_mcp/ticket_assign.php`
+
+Affecte un ticket à un **technicien** OU à un **groupe** (ids de l'instance).
+Réplique `core/ticket.php` : historique type 1 (attribution) ou type 2
+(transfert) selon la transition, bump d'état natif « Non attribué » → « Attente
+PEC », puis **notification d'attribution native**.
+
+| Param | Requis | Description |
+|---|---|---|
+| `author_id` | ✅ | Technicien auteur |
+| `ticket_id` | ✅ | Numéro du ticket |
+| `technician_id` | ✱ | Technicien cible (exclusif avec `group_id`) |
+| `group_id` | ✱ | Groupe cible (exclusif avec `technician_id`) |
+| `notify` | ❌ | Notifier l'affectation (défaut `1`) |
+
+✱ Fournir l'un **ou** l'autre. Les ids proviennent de
+`referentials.php?kind=technician` / `?kind=group`.
 
 ## Sécurité
 

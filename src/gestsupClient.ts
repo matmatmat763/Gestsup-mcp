@@ -15,7 +15,13 @@ type Json = Record<string, unknown> | unknown[] | null;
 /** Référentiels via l'API native. */
 export type NativeReferentialKind = "type" | "category" | "subcat" | "place";
 /** Référentiels via le plugin (définis par l'instance, lus en base). */
-export type PluginReferentialKind = "state" | "priority" | "criticality" | "cause";
+export type PluginReferentialKind =
+  | "state"
+  | "priority"
+  | "criticality"
+  | "cause"
+  | "group"
+  | "technician";
 export type ReferentialKind = NativeReferentialKind | PluginReferentialKind;
 
 export interface ReferentialItem {
@@ -334,6 +340,58 @@ export class GestsupClient {
       }
       return out;
     });
+  }
+
+  /**
+   * Affecte un ticket à un technicien OU à un groupe (ids de l'instance).
+   * Déclenche la notification d'attribution native de GestSup.
+   */
+  async assign(input: {
+    ticket_id: number;
+    technician_id?: number;
+    group_id?: number;
+    notify?: boolean;
+  }): Promise<{
+    assigned_to: string;
+    technician: string;
+    group: string;
+    history: string;
+    new_state: string;
+    mail: string;
+  }> {
+    if (!this.cfg.defaultUserId) {
+      throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (auteur de l'action).");
+    }
+    if (!input.technician_id && !input.group_id) {
+      throw new GestsupError("Préciser technician_id ou group_id.");
+    }
+    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_assign.php", {
+      urlencoded: true,
+      form: {
+        author_id: this.cfg.defaultUserId,
+        ticket_id: input.ticket_id,
+        technician_id: input.technician_id,
+        group_id: input.group_id,
+        notify: input.notify === false ? 0 : 1,
+      },
+    });
+    if (status === 404 && !(body && typeof body === "object" && "assigned_to" in body)) {
+      throw new GestsupError(
+        "Endpoint plugin introuvable (404) ou ticket inexistant. Plugin « gestsup_mcp » installé ?",
+        404,
+        "TicketAssign",
+      );
+    }
+    if (!isSuccess(body)) throw mapError(status, body, "TicketAssign");
+    const b = body as Record<string, unknown>;
+    return {
+      assigned_to: String(b.assigned_to ?? ""),
+      technician: String(b.technician ?? ""),
+      group: String(b.group ?? ""),
+      history: String(b.history ?? ""),
+      new_state: String(b.new_state ?? ""),
+      mail: String(b.mail ?? ""),
+    };
   }
 
   /**

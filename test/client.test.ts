@@ -216,6 +216,34 @@ describe("GestsupClient.addComment (plugin gestsup_mcp)", () => {
   });
 });
 
+describe("GestsupClient.assign (plugin gestsup_mcp)", () => {
+  it("affecte à un technicien via le plugin", async () => {
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      type: "success",
+      action: "TicketAssign",
+      ticket_id: "10",
+      assigned_to: "technician",
+      technician: "11",
+      group: "0",
+      history: "attribution",
+      new_state: "1",
+      mail: "sent",
+    });
+    const client = new GestsupClient({ ...cfg, defaultUserId: 1 }, impl);
+    const r = await client.assign({ ticket_id: 10, technician_id: 11 });
+    expect(r.assigned_to).toBe("technician");
+    expect(r.history).toBe("attribution");
+    expect(calls[0].url).toContain("/plugins/gestsup_mcp/ticket_assign.php");
+  });
+
+  it("exige technician_id ou group_id", async () => {
+    const { impl } = fakeFetch(200, {});
+    const client = new GestsupClient({ ...cfg, defaultUserId: 1 }, impl);
+    await expect(client.assign({ ticket_id: 10 })).rejects.toThrow(/technician_id ou group_id/);
+  });
+});
+
 describe("GestsupClient.setState (plugin gestsup_mcp)", () => {
   it("poste au plugin ticket_state.php et mappe la résolution", async () => {
     const { impl, calls } = fakeFetch(200, {
