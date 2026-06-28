@@ -178,6 +178,44 @@ describe("GestsupClient.searchTickets (plugin gestsup_mcp)", () => {
   });
 });
 
+describe("GestsupClient.addComment (plugin gestsup_mcp)", () => {
+  it("poste au plugin avec author_id, en urlencoded, et mappe la réponse", async () => {
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      type: "success",
+      action: "TicketComment",
+      ticket_id: "1",
+      thread_id: "9",
+      private: 0,
+      notified: true,
+      mail: "sent",
+    });
+    const client = new GestsupClient({ ...cfg, defaultUserId: 10 }, impl);
+    const r = await client.addComment({ ticket_id: 1, text: "Bonjour", isPrivate: false, time: 5 });
+    expect(r.thread_id).toBe("9");
+    expect(r.notified).toBe(true);
+    expect(r.isPrivate).toBe(false);
+    expect(calls[0].url).toContain("/plugins/gestsup_mcp/ticket_comment.php");
+    expect(calls[0].method).toBe("POST");
+  });
+
+  it("exige GESTSUP_DEFAULT_USER_ID", async () => {
+    const { impl } = fakeFetch(200, {});
+    const client = new GestsupClient(cfg, impl); // sans defaultUserId
+    await expect(
+      client.addComment({ ticket_id: 1, text: "x", isPrivate: false }),
+    ).rejects.toThrow(/DEFAULT_USER_ID/);
+  });
+
+  it("signale clairement si le plugin n'est pas installé (404)", async () => {
+    const { impl } = fakeFetch(404, "Not Found");
+    const client = new GestsupClient({ ...cfg, defaultUserId: 10 }, impl);
+    await expect(
+      client.addComment({ ticket_id: 1, text: "x", isPrivate: false }),
+    ).rejects.toThrow(/gestsup_mcp/);
+  });
+});
+
 describe("GestsupClient (auth basic)", () => {
   it("envoie l'en-tête Authorization Basic", async () => {
     const { impl, calls } = fakeFetch(200, { code: 0, ticket_id: 1, ticket_url: "u", message: "m" });

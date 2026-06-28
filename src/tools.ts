@@ -92,35 +92,45 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     {
       title: "Ajouter un commentaire",
       description:
-        "Ajoute un commentaire (texte) au fil de résolution d'un ticket existant. Le ticket est vérifié avant l'ajout.",
+        "Ajoute un commentaire au fil d'un ticket. Un commentaire PUBLIC notifie le demandeur par mail (selon les paramètres GestSup) ; une NOTE INTERNE (internal=true) n'est pas visible du demandeur et n'envoie aucun mail. Nécessite le plugin serveur « gestsup_mcp ».",
       inputSchema: {
         ticket_id: z.number().int().positive().describe("Numéro du ticket."),
         text: z.string().min(1).describe("Texte du commentaire."),
-        user_id: z
+        internal: z
+          .boolean()
+          .default(false)
+          .describe("true = note interne (privée, invisible du demandeur, sans mail)."),
+        notify: z
+          .boolean()
+          .default(true)
+          .describe("Pour un commentaire public : notifier le demandeur (par défaut oui)."),
+        time: z
           .number()
           .int()
-          .positive()
+          .nonnegative()
           .optional()
-          .describe("ID de l'auteur (tusers.id). Défaut : GESTSUP_DEFAULT_USER_ID."),
+          .describe("Temps passé à enregistrer sur ce commentaire (minutes)."),
       },
     },
     async (args): Promise<ToolResult> => {
       if (!cfg.allowWrites) {
         return fail(new GestsupError("Écriture désactivée (GESTSUP_ALLOW_WRITES=false)."));
       }
-      const userId = args.user_id ?? cfg.defaultUserId;
-      if (!userId) {
-        return fail(
-          new GestsupError(
-            "Aucun user_id fourni et GESTSUP_DEFAULT_USER_ID non défini : impossible d'identifier l'auteur du commentaire.",
-          ),
-        );
-      }
       try {
-        // L'API ne vérifie pas l'existence du ticket : on le fait pour éviter un commentaire orphelin.
-        await client.getTicket(args.ticket_id);
-        const r = await client.addResolution(args.ticket_id, userId, args.text);
-        return ok(`Commentaire ajouté au ticket ${r.ticket_id}.`, r);
+        const r = await client.addComment({
+          ticket_id: args.ticket_id,
+          text: args.text,
+          isPrivate: args.internal,
+          time: args.time,
+          notify: args.notify,
+        });
+        const kind = r.isPrivate ? "Note interne" : "Commentaire";
+        const mail = r.isPrivate
+          ? "sans notification"
+          : r.notified
+            ? `notification: ${r.mail}`
+            : "sans notification";
+        return ok(`${kind} ajouté(e) au ticket ${args.ticket_id} (${mail}).`, r);
       } catch (e) {
         return fail(e);
       }

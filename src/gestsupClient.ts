@@ -98,6 +98,7 @@ export class GestsupClient {
     opts: {
       query?: Record<string, string | number>;
       form?: Record<string, string | number | undefined>;
+      urlencoded?: boolean;
     } = {},
   ): Promise<{ status: number; ok: boolean; body: Json }> {
     const url = new URL(this.cfg.baseUrl + subPath);
@@ -108,13 +109,21 @@ export class GestsupClient {
     }
 
     const headers = this.authHeaders();
-    let body: FormData | undefined;
+    let body: FormData | URLSearchParams | undefined;
     if (opts.form) {
-      const fd = new FormData();
-      for (const [k, v] of Object.entries(opts.form)) {
-        if (v !== undefined && v !== "") fd.append(k, String(v));
+      if (opts.urlencoded) {
+        const usp = new URLSearchParams();
+        for (const [k, v] of Object.entries(opts.form)) {
+          if (v !== undefined && v !== "") usp.append(k, String(v));
+        }
+        body = usp;
+      } else {
+        const fd = new FormData();
+        for (const [k, v] of Object.entries(opts.form)) {
+          if (v !== undefined && v !== "") fd.append(k, String(v));
+        }
+        body = fd;
       }
-      body = fd;
     }
 
     const controller = new AbortController();
@@ -339,6 +348,56 @@ export class GestsupClient {
       limit: Number(b.limit ?? input.limit),
       offset: Number(b.offset ?? 0),
       tickets: rows.map(normalizeTicketListItem),
+    };
+  }
+
+  /**
+   * Ajoute un commentaire (public ou interne) à un ticket via le plugin
+   * gestsup_mcp. Un commentaire public déclenche la notification native de
+   * GestSup (mail au demandeur) selon les paramètres de l'application.
+   * L'auteur est le technicien configuré (GESTSUP_DEFAULT_USER_ID).
+   */
+  async addComment(input: {
+    ticket_id: number;
+    text: string;
+    isPrivate: boolean;
+    time?: number;
+    notify?: boolean;
+  }): Promise<{ thread_id: string; isPrivate: boolean; notified: boolean; mail: string }> {
+    if (!this.cfg.defaultUserId) {
+      throw new GestsupError(
+        "GESTSUP_DEFAULT_USER_ID est requis pour identifier l'auteur du commentaire.",
+      );
+    }
+    const { status, body } = await this.callAbsolute(
+      "POST",
+      "/plugins/gestsup_mcp/ticket_comment.php",
+      {
+        urlencoded: true,
+        form: {
+          author_id: this.cfg.defaultUserId,
+          ticket_id: input.ticket_id,
+          text: input.text,
+          private: input.isPrivate ? 1 : 0,
+          time: input.time ?? 0,
+          notify: input.notify === false ? 0 : 1,
+        },
+      },
+    );
+    if (status === 404) {
+      throw new GestsupError(
+        "Endpoint plugin introuvable (404). Le plugin GestSup « gestsup_mcp » n'est probablement pas installé.",
+        404,
+        "TicketComment",
+      );
+    }
+    if (!isSuccess(body)) throw mapError(status, body, "TicketComment");
+    const b = body as Record<string, unknown>;
+    return {
+      thread_id: String(b.thread_id ?? ""),
+      isPrivate: Number(b.private ?? 0) === 1,
+      notified: Boolean(b.notified),
+      mail: String(b.mail ?? ""),
     };
   }
 }

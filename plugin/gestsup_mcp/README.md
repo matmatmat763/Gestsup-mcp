@@ -93,6 +93,35 @@ curl "https://serveur/plugins/gestsup_mcp/tickets.php?keywords=imprimante&limit=
   -H "X-API-KEY: VOTRE_CLE"
 ```
 
+### `POST /plugins/gestsup_mcp/ticket_comment.php`
+
+Ajoute un commentaire à un ticket — **public** ou **note interne** — en
+répliquant fidèlement `core/ticket.php` (insert `tthreads` type 0 + `date_modif`
++ `userread`) **et** en déclenchant la **notification native** de GestSup
+(`core/auto_mail.php`) selon tes paramètres `mail_auto_*`.
+
+**Authentification** : clé API + identité du technicien.
+
+**Paramètres (form / urlencoded)**
+
+| Param | Requis | Description |
+|---|---|---|
+| `author_id` | ✅ | ID du technicien auteur (= `GESTSUP_DEFAULT_USER_ID` côté MCP) |
+| `ticket_id` | ✅ | Numéro du ticket |
+| `text` | ✅ | Texte du commentaire |
+| `private` | ❌ | `1` = note interne (invisible du demandeur, **aucun mail**). Défaut `0`. |
+| `time` | ❌ | Temps passé (minutes) consigné sur le commentaire |
+| `notify` | ❌ | Pour un commentaire public : notifier le demandeur. Défaut `1`. |
+
+- **Commentaire public** → le demandeur reçoit le **mail natif** (sujet/template
+  GestSup), exactement comme via l'interface ; GestSup journalise aussi le
+  thread « mail envoyé ».
+- **Note interne** (`private=1`) → enregistrée sans aucune notification.
+
+Le mail n'est envoyé que si le **connecteur SMTP est configuré** (même garde que
+`core/ticket.php`). L'écriture est **transactionnelle** et l'endpoint renvoie
+l'état (`thread_id`, `private`, `notified`, `mail`).
+
 ## Sécurité
 
 - Mêmes contrôles que l'API native (clé API, HTTPS/443, liste blanche d'IP) +
