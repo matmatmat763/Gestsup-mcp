@@ -53,6 +53,8 @@ export interface FindTicketsInput {
 export interface SearchTicketsInput {
   technician_id?: number;
   state_id?: number;
+  /** États à exclure (ex. résolus) — ids issus du référentiel de l'instance. */
+  exclude_state_ids?: number[];
   category_id?: number;
   subcat_id?: number;
   requester_id?: number;
@@ -625,6 +627,9 @@ export class GestsupClient {
     };
     if (input.technician_id !== undefined) query.technician = input.technician_id;
     if (input.state_id !== undefined) query.state = input.state_id;
+    if (input.exclude_state_ids && input.exclude_state_ids.length > 0) {
+      query.exclude_states = input.exclude_state_ids.join(",");
+    }
     if (input.category_id !== undefined) query.category = input.category_id;
     if (input.subcat_id !== undefined) query.subcat = input.subcat_id;
     if (input.requester_id !== undefined) query.user = input.requester_id;

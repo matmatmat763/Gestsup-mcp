@@ -65,6 +65,17 @@ if (!empty($_GET['keywords'])) {
     $bind['kw'] = '%' . $_GET['keywords'] . '%';
 }
 
+// Exclusion d'états (ex. masquer les tickets résolus pour "mes tickets ouverts").
+// Les ids viennent de l'appelant (référentiel d'états de l'instance) : rien en dur.
+if (!empty($_GET['exclude_states'])) {
+    $ex = array_values(array_filter(array_map('intval', explode(',', $_GET['exclude_states']))));
+    if ($ex) {
+        $ph = array();
+        foreach ($ex as $idx => $sid) { $key = 'exst' . $idx; $ph[] = ':' . $key; $bind[$key] = $sid; }
+        $where[] = 'i.state NOT IN (' . implode(',', $ph) . ')';
+    }
+}
+
 // Tri (liste blanche stricte — pas d'injection possible)
 $order_whitelist = array(
     'id' => 'i.id',

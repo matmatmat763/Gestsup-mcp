@@ -31,6 +31,28 @@ depuis un agent LLM (Claude Desktop, Claude Code, etc.), accompagné d'une
 > globale). La modification d'état, l'affectation et la gestion des équipements
 > ne sont pas encore exposées (prochaines étapes du plugin).
 
+## Scénarios d'assistant (exemples)
+
+Une fois branché, tu pilotes GestSup en langage naturel ; l'assistant combine les
+outils :
+
+- **Point quotidien sur mes tickets** : *« Fais le point sur mes tickets ouverts »*
+  → `gestsup_search_tickets(technician_id=<moi>, exclude_state_ids=[<résolu/rejeté>])`
+  puis synthèse par état/priorité. (Les ids d'états « terminaux » viennent de
+  `gestsup_list_referential kind=state`.)
+- **Résumé d'un ticket** : *« Résume le ticket 1234 »* → `gestsup_get_ticket` + synthèse.
+- **Résumer les tickets d'un demandeur** : *« Où en sont les tickets de Marie ? »*
+  → `gestsup_find_tickets_by_user` / `gestsup_search_tickets(requester_id=…)`.
+- **« Point infra » du chef** : *« Synthèse des tickets de l'équipe Réseau »*
+  → `gestsup_search_tickets(... )` filtré par technicien(s)/groupe, puis synthèse.
+- **Agir** : commenter, noter en interne, changer l'état/résoudre, affecter,
+  mettre à jour (catégorie/priorité/temps), clôturer (conforme), créer un ticket
+  complet — chaque action notifie selon **tes paramètres GestSup**.
+
+> L'identité « moi » = `GESTSUP_DEFAULT_USER_ID` (ton id technicien). Toutes les
+> valeurs (états, priorités, catégories, techniciens, procédures…) sont **lues de
+> ton instance**, jamais codées en dur.
+
 ## Plugin serveur GestSup `gestsup_mcp` (optionnel)
 
 L'API native ne sait **pas** lister les tickets par technicien ni faire de

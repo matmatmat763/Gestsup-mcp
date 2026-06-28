@@ -474,6 +474,12 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
           .optional()
           .describe("ID du technicien assigné (pour lister SES tickets)."),
         state_id: z.number().int().nonnegative().optional().describe("ID d'état du ticket."),
+        exclude_state_ids: z
+          .array(z.number().int().nonnegative())
+          .optional()
+          .describe(
+            "États à exclure (ex. résolus) pour ne voir que les tickets ouverts. Récupérer les ids via gestsup_list_referential kind=state.",
+          ),
         category_id: z.number().int().positive().optional().describe("ID de catégorie."),
         subcat_id: z.number().int().positive().optional().describe("ID de sous-catégorie."),
         requester_id: z.number().int().positive().optional().describe("ID du demandeur."),
@@ -502,6 +508,7 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
         const r = await client.searchTickets({
           technician_id: args.technician_id,
           state_id: args.state_id,
+          exclude_state_ids: args.exclude_state_ids,
           category_id: args.category_id,
           subcat_id: args.subcat_id,
           requester_id: args.requester_id,
