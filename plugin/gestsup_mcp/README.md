@@ -178,6 +178,23 @@ PEC », puis **notification d'attribution native**.
 ✱ Fournir l'un **ou** l'autre. Les ids proviennent de
 `referentials.php?kind=technician` / `?kind=group`.
 
+### `POST /plugins/gestsup_mcp/ticket_update.php`
+
+Met à jour des champs « simples » d'un ticket (sans historique dédié dans
+GestSup) : `category`, `subcat`, `priority`, `criticality`, `type`, `time`
+(temps passé), `time_hope` (temps prévu). Un seul `UPDATE` + `date_modif`, puis
+notification native.
+
+| Param | Requis | Description |
+|---|---|---|
+| `author_id` | ✅ | Technicien auteur |
+| `ticket_id` | ✅ | Numéro du ticket |
+| `category` / `subcat` / `priority` / `criticality` / `type` | ✱ | IDs **validés contre les référentiels de l'instance** |
+| `time` / `time_hope` | ✱ | Minutes (entiers) |
+| `notify` | ❌ | Notifier le demandeur (défaut `1`) |
+
+✱ Au moins un champ. Tout id inconnu de l'instance est **refusé** (400).
+
 ## Sécurité
 
 - Mêmes contrôles que l'API native (clé API, HTTPS/443, liste blanche d'IP) +

@@ -216,6 +216,34 @@ describe("GestsupClient.addComment (plugin gestsup_mcp)", () => {
   });
 });
 
+describe("GestsupClient.updateTicket (plugin gestsup_mcp)", () => {
+  it("envoie les champs au plugin et mappe la réponse", async () => {
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      type: "success",
+      action: "TicketUpdate",
+      ticket_id: "3",
+      updated: { priority: 1, criticality: 2 },
+      mail: "sent",
+    });
+    const client = new GestsupClient({ ...cfg, defaultUserId: 1 }, impl);
+    const r = await client.updateTicket({ ticket_id: 3, priority_id: 1, criticality_id: 2 });
+    expect(r.updated).toEqual({ priority: 1, criticality: 2 });
+    expect(calls[0].url).toContain("/plugins/gestsup_mcp/ticket_update.php");
+    expect(calls[0].method).toBe("POST");
+  });
+
+  it("remonte une erreur 400 (valeur invalide dans l'instance)", async () => {
+    const { impl } = fakeFetch(400, {
+      code: 1,
+      type: "error",
+      message: "Valeur priority=99 inconnue dans l'instance (référentiel tpriority).",
+    });
+    const client = new GestsupClient({ ...cfg, defaultUserId: 1 }, impl);
+    await expect(client.updateTicket({ ticket_id: 3, priority_id: 99 })).rejects.toThrow(/inconnue/);
+  });
+});
+
 describe("GestsupClient.assign (plugin gestsup_mcp)", () => {
   it("affecte à un technicien via le plugin", async () => {
     const { impl, calls } = fakeFetch(200, {

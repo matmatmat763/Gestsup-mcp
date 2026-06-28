@@ -191,6 +191,64 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     },
   );
 
+  // -------------------------- mise à jour de champs (plugin gestsup_mcp)
+  server.registerTool(
+    "gestsup_update_ticket",
+    {
+      title: "Mettre à jour un ticket",
+      description:
+        "Met à jour des champs d'un ticket : catégorie, sous-catégorie, priorité, criticité, type, temps passé/prévu. Les valeurs sont des IDs À RÉCUPÉRER via gestsup_list_referential (category/subcat/priority/criticality/type) — jamais devinés. Notifie le demandeur selon les paramètres GestSup. Nécessite le plugin « gestsup_mcp ».",
+      inputSchema: {
+        ticket_id: z.number().int().positive().describe("Numéro du ticket."),
+        category_id: z.number().int().positive().optional().describe("ID de catégorie (kind=category)."),
+        subcat_id: z.number().int().positive().optional().describe("ID de sous-catégorie (kind=subcat)."),
+        priority_id: z.number().int().positive().optional().describe("ID de priorité (kind=priority)."),
+        criticality_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("ID de criticité (kind=criticality)."),
+        type_id: z.number().int().positive().optional().describe("ID de type (kind=type)."),
+        time: z.number().int().nonnegative().optional().describe("Temps passé total (minutes)."),
+        time_hope: z.number().int().nonnegative().optional().describe("Temps prévu (minutes)."),
+        notify: z.boolean().default(true).describe("Notifier le demandeur (selon paramètres GestSup)."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      if (!cfg.allowWrites) {
+        return fail(new GestsupError("Écriture désactivée (GESTSUP_ALLOW_WRITES=false)."));
+      }
+      const hasField =
+        args.category_id !== undefined ||
+        args.subcat_id !== undefined ||
+        args.priority_id !== undefined ||
+        args.criticality_id !== undefined ||
+        args.type_id !== undefined ||
+        args.time !== undefined ||
+        args.time_hope !== undefined;
+      if (!hasField) {
+        return fail(new GestsupError("Aucun champ fourni à mettre à jour."));
+      }
+      try {
+        const r = await client.updateTicket({
+          ticket_id: args.ticket_id,
+          category_id: args.category_id,
+          subcat_id: args.subcat_id,
+          priority_id: args.priority_id,
+          criticality_id: args.criticality_id,
+          type_id: args.type_id,
+          time: args.time,
+          time_hope: args.time_hope,
+          notify: args.notify,
+        });
+        return ok(`Ticket ${args.ticket_id} mis à jour (mail: ${r.mail}).`, r);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
   // ---------------------------------------- affectation (plugin gestsup_mcp)
   server.registerTool(
     "gestsup_assign_ticket",

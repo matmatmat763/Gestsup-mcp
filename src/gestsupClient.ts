@@ -447,6 +447,55 @@ export class GestsupClient {
     };
   }
 
+  /**
+   * Met à jour des champs simples d'un ticket (catégorie, sous-catégorie,
+   * priorité, criticité, type, temps passé/prévu). Chaque id est validé côté
+   * serveur contre la liste de l'instance. Déclenche la notification native.
+   */
+  async updateTicket(input: {
+    ticket_id: number;
+    category_id?: number;
+    subcat_id?: number;
+    priority_id?: number;
+    criticality_id?: number;
+    type_id?: number;
+    time?: number;
+    time_hope?: number;
+    notify?: boolean;
+  }): Promise<{ updated: Record<string, unknown>; mail: string }> {
+    if (!this.cfg.defaultUserId) {
+      throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (auteur de l'action).");
+    }
+    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_update.php", {
+      urlencoded: true,
+      form: {
+        author_id: this.cfg.defaultUserId,
+        ticket_id: input.ticket_id,
+        category: input.category_id,
+        subcat: input.subcat_id,
+        priority: input.priority_id,
+        criticality: input.criticality_id,
+        type: input.type_id,
+        time: input.time,
+        time_hope: input.time_hope,
+        notify: input.notify === false ? 0 : 1,
+      },
+    });
+    if (status === 404 && !(body && typeof body === "object" && "updated" in body)) {
+      throw new GestsupError(
+        "Endpoint plugin introuvable (404) ou ticket inexistant. Plugin « gestsup_mcp » installé ?",
+        404,
+        "TicketUpdate",
+      );
+    }
+    if (!isSuccess(body)) throw mapError(status, body, "TicketUpdate");
+    const b = body as Record<string, unknown>;
+    return {
+      updated: (b.updated as Record<string, unknown>) ?? {},
+      mail: String(b.mail ?? ""),
+    };
+  }
+
   // ----------------------------- Plugin gestsup_mcp (API étendue, lecture) ---
 
   /**
