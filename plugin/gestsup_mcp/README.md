@@ -33,11 +33,11 @@ chaque écriture **réplique la logique native** et **réutilise le mailer natif
 > Le plugin doit être **activé** (`tplugins.enable = 1`) pour répondre, sinon il
 > renvoie `403`.
 
-## Endpoint
+## Endpoints
 
 ### `GET /plugins/gestsup_mcp/tickets.php`
 
-Liste/recherche de tickets. **Lecture seule.**
+Liste/recherche de tickets (lecture seule).
 
 **Authentification** : header `X-API-KEY: <clé>` (ou Basic), HTTPS obligatoire,
 IP autorisée si liste blanche configurée — exactement comme l'API native.
@@ -242,19 +242,15 @@ ticket »). Le demandeur est donné par `requester_id` **ou** `requester_email`.
 
 - Mêmes contrôles que l'API native (clé API, HTTPS/443, liste blanche d'IP) +
   vérification que le plugin est activé.
-- **Lecture seule** : aucune écriture en base.
 - Toutes les valeurs sont **liées via requêtes préparées** (PDO) ; le tri/sens
   utilise une **liste blanche stricte** (aucune injection possible).
+- Les écritures sont **transactionnelles** et **répliquent la logique native**
+  de GestSup (historique `tthreads`, dates, état) ; les notifications réutilisent
+  le **mailer natif** (`core/auto_mail.php`) selon les paramètres `mail_auto_*`.
+- Aucune valeur de liste n'est codée en dur : tout id est **validé contre
+  l'instance** (référentiels).
 
 ## Désinstallation
 
 Exécuter `_SQL/uninstall.sql` puis supprimer le dossier (ou utiliser la
 désinstallation depuis l'interface des plugins).
-
-## Roadmap (prochaines étapes, écriture)
-
-Endpoints d'écriture à ajouter en répliquant fidèlement la logique GestSup
-(historique `tthreads`, notifications mail, dates) :
-- changer l'état / clôturer un ticket,
-- affecter un ticket à un technicien / groupe,
-- (éventuellement) ajouter d'autres lectures (détail enrichi, statistiques).
