@@ -4,10 +4,11 @@ Monte en quelques minutes une instance **GestSup jetable**, pré-remplie de
 **données d'exemple** et avec l'**API activée**, pour tester le serveur MCP sur
 du « vrai » sans toucher à ta production.
 
-> Cette étape **n'inclut pas** le plugin `gestsup_mcp` : 6 des 7 outils MCP
-> fonctionnent (création/lecture/commentaire/listes). L'outil
-> `gestsup_search_tickets` (recherche par technicien) nécessitera d'ajouter le
-> plugin ensuite — voir la fin de ce document.
+> Le plugin **`gestsup_mcp` est auto-installé et activé** par le stack
+> (copié dans la source par `fetch-source.sh`, enregistré par
+> `db/init/30-gestsup-mcp.sql`). **Tous les outils MCP** fonctionnent donc,
+> écritures comprises. Les notifications mail sont activées : pointez
+> `mail_smtp` vers un collecteur SMTP pour les capturer.
 
 ## Pré-requis
 
@@ -82,15 +83,15 @@ docker compose down        # arrête
 docker compose down -v     # arrête + efface la base (repart de zéro au prochain up)
 ```
 
-## Étape suivante : ajouter le plugin `gestsup_mcp`
+## Mettre à jour le plugin dans le stack
 
-Pour tester aussi `gestsup_search_tickets` (recherche par technicien), copier le
-plugin dans la source **avant** le build, puis l'activer :
+Le plugin est déjà installé. Après une modification du plugin dans le dépôt,
+relancez simplement :
 
 ```bash
-cp -a ../plugin/gestsup_mcp web/src/plugins/gestsup_mcp
+./fetch-source.sh          # recopie le plugin dans la source
 docker compose up -d --build
-# activer le plugin (une fois la base initialisée) :
-docker compose exec db mariadb -ugestsup -pgestsup gestsup \
-  -e "INSERT INTO tplugins (name,label,description,icon,version,enable) VALUES ('gestsup_mcp','MCP','API etendue','robot','0.1',1) ON DUPLICATE KEY UPDATE enable=1;"
 ```
+
+> Pour faire évoluer le plugin/MCP **quand GestSup change de version**, suivez
+> le runbook [`docs/maintenance-gestsup-updates.md`](../docs/maintenance-gestsup-updates.md).

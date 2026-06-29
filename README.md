@@ -8,9 +8,12 @@ depuis un agent LLM (Claude Desktop, Claude Code, etc.), accompagné d'une
 
 | Élément | Description |
 |---|---|
-| **Serveur MCP** (`src/`) | 6 outils de gestion de tickets, prêts à brancher sur un client MCP. |
+| **Serveur MCP** (`src/`) | Outils de gestion de tickets (lecture + écriture), prêts à brancher sur un client MCP. |
+| **Plugin** ([`plugin/gestsup_mcp/`](plugin/gestsup_mcp/)) | Addon serveur GestSup ajoutant les endpoints d'écriture/recherche (réplique la logique native + réutilise le mailer). |
 | [`docs/gestsup-api.md`](docs/gestsup-api.md) | Documentation complète de l'API REST GestSup, reconstruite depuis le code source. |
 | [`docs/mcp-server-plan.md`](docs/mcp-server-plan.md) | Plan d'architecture détaillé du serveur. |
+| [`docs/maintenance-gestsup-updates.md`](docs/maintenance-gestsup-updates.md) | **Runbook** : mettre à jour le plugin/MCP quand GestSup évolue. |
+| [`test-integration/`](test-integration/) | Harnais de revalidation bout-en-bout (endpoints + mails) contre une instance réelle. |
 | [`docs/reference/swagger-v1-3.2.55.json`](docs/reference/swagger-v1-3.2.55.json) | Swagger d'origine (incomplet, fourni pour référence). |
 
 ## Outils MCP exposés

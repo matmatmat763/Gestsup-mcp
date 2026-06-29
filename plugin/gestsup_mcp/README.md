@@ -1,13 +1,18 @@
-# Plugin GestSup `gestsup_mcp` — API étendue (lecture)
+# Plugin GestSup `gestsup_mcp` — API étendue (lecture + écriture)
 
-Plugin serveur qui **ajoute des endpoints API en lecture** à GestSup, pour
-combler les manques de l'API native. Prototype : **recherche / liste de tickets
-avec filtres** (notamment **par technicien**), ce que l'API officielle ne sait
-pas faire.
+Plugin serveur qui **ajoute des endpoints API** à GestSup pour combler les
+manques de l'API native : **recherche de tickets** (par technicien, état,
+mots-clés…) et **écritures** (commentaire/note interne, changement d'état,
+affectation, mise à jour de champs, clôture conforme, création complète) —
+chaque écriture **réplique la logique native** et **réutilise le mailer natif**.
 
 > Réutilise la **clé API GestSup existante** (même sécurité : clé, IP, HTTPS).
 > Aucune modification du cœur de GestSup : c'est un dossier de plugin déposé
 > dans `plugins/`.
+>
+> **Validé contre GestSup 3.2.55.** Pour suivre une montée de version, voir le
+> runbook [`../../docs/maintenance-gestsup-updates.md`](../../docs/maintenance-gestsup-updates.md)
+> et le harnais [`../../test-integration/`](../../test-integration/).
 
 ## Installation
 

@@ -55,4 +55,12 @@ mkdir -p "$DEST_SRC" "$(dirname "$DEST_SQL")"
 cp -a "$SRC_ROOT/." "$DEST_SRC/"
 cp "$SRC_ROOT/_SQL/skeleton.sql" "$DEST_SQL"
 
+# Installe le plugin gestsup_mcp dans la source (auto-installé dans le stack)
+if [ -d ../plugin/gestsup_mcp ]; then
+  mkdir -p "$DEST_SRC/plugins"
+  rm -rf "$DEST_SRC/plugins/gestsup_mcp"
+  cp -a ../plugin/gestsup_mcp "$DEST_SRC/plugins/gestsup_mcp"
+  echo "    plugin gestsup_mcp copié dans la source (activé via db/init/30-gestsup-mcp.sql)"
+fi
+
 echo "==> Terminé. Lancez maintenant :  docker compose up -d --build"
