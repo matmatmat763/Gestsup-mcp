@@ -49,6 +49,13 @@ if ($user !== null) { $where[] = 'i.user = :user'; $bind['user'] = $user; }
 $technician_group = mcp_int('technician_group');
 if ($technician_group !== null) { $where[] = 'i.t_group = :tgroup'; $bind['tgroup'] = $technician_group; }
 
+$type = mcp_int('type');
+if ($type !== null) { $where[] = 'i.type = :type'; $bind['type'] = $type; }
+
+// Lieu (multi-site) : filtre sur tincidents.place
+$place = mcp_int('place');
+if ($place !== null) { $where[] = 'i.place = :place'; $bind['place'] = $place; }
+
 // Plage de dates sur date_create (format YYYY-MM-DD)
 if (!empty($_GET['date_from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date_from'])) {
     $where[] = 'i.date_create >= :date_from';
@@ -110,12 +117,14 @@ $sql = "
         i.id, i.title, i.state, s.name AS state_name,
         i.type, ty.name AS type_name,
         i.category, i.subcat,
+        i.place, pl.name AS place_name,
         i.technician, TRIM(CONCAT(COALESCE(t.firstname,''),' ',COALESCE(t.lastname,''))) AS technician_name,
         i.user, TRIM(CONCAT(COALESCE(u.firstname,''),' ',COALESCE(u.lastname,''))) AS requester_name,
         i.date_create, i.date_modif, i.priority, i.criticality
     FROM tincidents i
     LEFT JOIN tstates s ON i.state = s.id
     LEFT JOIN ttypes ty ON i.type = ty.id
+    LEFT JOIN tplaces pl ON i.place = pl.id
     LEFT JOIN tusers t ON i.technician = t.id
     LEFT JOIN tusers u ON i.user = u.id
     WHERE $where_sql
@@ -136,6 +145,8 @@ while ($row = $qry->fetch(PDO::FETCH_ASSOC)) {
         'type_name' => $row['type_name'],
         'category_id' => $row['category'],
         'subcat_id' => $row['subcat'],
+        'place_id' => $row['place'],
+        'place_name' => $row['place_name'],
         'technician_id' => $row['technician'],
         'technician_name' => $row['technician_name'],
         'user_id' => $row['user'],

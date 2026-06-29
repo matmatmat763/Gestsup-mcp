@@ -39,6 +39,7 @@ $editable = array(
     'priority'    => array('priority',    'tpriority'),
     'criticality' => array('criticality', 'tcriticality'),
     'type'        => array('type',        'ttypes'),
+    'place'       => array('place',       'tplaces'),   // lieu (multi-site)
     'time'        => array('time',        null),       // temps passé (minutes)
     'time_hope'   => array('time_hope',   null),       // temps prévu (minutes)
 );

@@ -321,6 +321,12 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
           .optional()
           .describe("ID de criticité (kind=criticality)."),
         type_id: z.number().int().positive().optional().describe("ID de type (kind=type)."),
+        place_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("ID de lieu / site (kind=place) — utile en multi-site."),
         time: z.number().int().nonnegative().optional().describe("Temps passé total (minutes)."),
         time_hope: z.number().int().nonnegative().optional().describe("Temps prévu (minutes)."),
         notify: z.boolean().default(true).describe("Notifier le demandeur (selon paramètres GestSup)."),
@@ -336,6 +342,7 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
         args.priority_id !== undefined ||
         args.criticality_id !== undefined ||
         args.type_id !== undefined ||
+        args.place_id !== undefined ||
         args.time !== undefined ||
         args.time_hope !== undefined;
       if (!hasField) {
@@ -349,6 +356,7 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
           priority_id: args.priority_id,
           criticality_id: args.criticality_id,
           type_id: args.type_id,
+          place_id: args.place_id,
           time: args.time,
           time_hope: args.time_hope,
           notify: args.notify,
@@ -482,6 +490,13 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
           ),
         category_id: z.number().int().positive().optional().describe("ID de catégorie."),
         subcat_id: z.number().int().positive().optional().describe("ID de sous-catégorie."),
+        type_id: z.number().int().positive().optional().describe("ID de type (kind=type)."),
+        place_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("ID de lieu / site (kind=place) — utile en multi-site."),
         requester_id: z.number().int().positive().optional().describe("ID du demandeur."),
         keywords: z.string().optional().describe("Recherche dans le titre et la description."),
         date_from: z
@@ -511,6 +526,8 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
           exclude_state_ids: args.exclude_state_ids,
           category_id: args.category_id,
           subcat_id: args.subcat_id,
+          type_id: args.type_id,
+          place_id: args.place_id,
           requester_id: args.requester_id,
           keywords: args.keywords,
           date_from: args.date_from,

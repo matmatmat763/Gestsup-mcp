@@ -57,6 +57,9 @@ export interface SearchTicketsInput {
   exclude_state_ids?: number[];
   category_id?: number;
   subcat_id?: number;
+  type_id?: number;
+  /** Lieu (multi-site) — id issu du référentiel `place`. */
+  place_id?: number;
   requester_id?: number;
   keywords?: string;
   date_from?: string;
@@ -575,6 +578,7 @@ export class GestsupClient {
     priority_id?: number;
     criticality_id?: number;
     type_id?: number;
+    place_id?: number;
     time?: number;
     time_hope?: number;
     notify?: boolean;
@@ -592,6 +596,7 @@ export class GestsupClient {
         priority: input.priority_id,
         criticality: input.criticality_id,
         type: input.type_id,
+        place: input.place_id,
         time: input.time,
         time_hope: input.time_hope,
         notify: input.notify === false ? 0 : 1,
@@ -632,6 +637,8 @@ export class GestsupClient {
     }
     if (input.category_id !== undefined) query.category = input.category_id;
     if (input.subcat_id !== undefined) query.subcat = input.subcat_id;
+    if (input.type_id !== undefined) query.type = input.type_id;
+    if (input.place_id !== undefined) query.place = input.place_id;
     if (input.requester_id !== undefined) query.user = input.requester_id;
     if (input.keywords !== undefined && input.keywords !== "") query.keywords = input.keywords;
     if (input.date_from !== undefined) query.date_from = input.date_from;

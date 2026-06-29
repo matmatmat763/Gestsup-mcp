@@ -106,6 +106,8 @@ export interface TicketListItem {
   type_name: string;
   category_id: string;
   subcat_id: string;
+  place_id: string;
+  place_name: string;
   technician_id: string;
   technician_name: string;
   user_id: string;
@@ -127,6 +129,8 @@ export function normalizeTicketListItem(t: Record<string, unknown>): TicketListI
     type_name: decodeHtml(t.type_name),
     category_id: str(t.category_id),
     subcat_id: str(t.subcat_id),
+    place_id: str(t.place_id),
+    place_name: decodeHtml(t.place_name),
     technician_id: str(t.technician_id),
     technician_name: decodeHtml(t.technician_name),
     user_id: str(t.user_id),

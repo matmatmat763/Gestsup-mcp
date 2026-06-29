@@ -51,6 +51,8 @@ IP autorisée si liste blanche configurée — exactement comme l'API native.
 | `state` | int | Filtre sur l'état |
 | `category` | int | Filtre sur la catégorie |
 | `subcat` | int | Filtre sur la sous-catégorie |
+| `type` | int | Filtre sur le type de demande |
+| `place` | int | Filtre sur le **lieu / site** (multi-site) |
 | `user` | int | Filtre sur le demandeur |
 | `keywords` | string | Recherche dans titre + description |
 | `date_from` | `YYYY-MM-DD` | Date de création min |
@@ -77,6 +79,7 @@ IP autorisée si liste blanche configurée — exactement comme l'API native.
       "state_id": "5", "state_name": "Nouveau",
       "type_id": "1", "type_name": "Incident",
       "category_id": "3", "subcat_id": "7",
+      "place_id": "2", "place_name": "Site Lyon",
       "technician_id": "12", "technician_name": "Jean Dupont",
       "user_id": "42", "requester_name": "Marie Martin",
       "date_create": "2025-02-01 10:00:00",
@@ -195,7 +198,7 @@ notification native.
 |---|---|---|
 | `author_id` | ✅ | Technicien auteur |
 | `ticket_id` | ✅ | Numéro du ticket |
-| `category` / `subcat` / `priority` / `criticality` / `type` | ✱ | IDs **validés contre les référentiels de l'instance** |
+| `category` / `subcat` / `priority` / `criticality` / `type` / `place` | ✱ | IDs **validés contre les référentiels de l'instance** (`place` = lieu/site, multi-site) |
 | `time` / `time_hope` | ✱ | Minutes (entiers) |
 | `notify` | ❌ | Notifier le demandeur (défaut `1`) |
 
