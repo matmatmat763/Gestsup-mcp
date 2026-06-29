@@ -90,6 +90,7 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 | `GESTSUP_AUTH_MODE` | ❌ | `header` | `header` (X-API-KEY) ou `basic`. |
 | `GESTSUP_TIMEOUT_MS` | ❌ | `15000` | Timeout HTTP (ms). |
 | `GESTSUP_ALLOW_WRITES` | ❌ | `true` | `false` = lecture seule (kill-switch). |
+| `GESTSUP_INCIDENT_TYPE_IDS` | ❌ | — | Ids des types « incident » (cause obligatoire à la clôture), séparés par des virgules. À défaut, détection par le nom du type. |
 | `GESTSUP_INSECURE_TLS` | ❌ | `false` | `true` = ignore la vérification TLS (**test local uniquement**, ex. Docker auto-signé). |
 
 ## Brancher sur Claude Desktop

@@ -422,13 +422,20 @@ export class GestsupClient {
    */
   async closeTicket(input: {
     ticket_id: number;
-    cause: string;
+    resolution: string;
+    cause?: string;
     procedure_id?: number;
     procedure_text?: string;
-    resolution?: string;
     time?: number;
     notify?: boolean;
-  }): Promise<{ resolved: boolean; procedure: string; mail: string }> {
+  }): Promise<{
+    resolved: boolean;
+    ticket_type: string;
+    cause_required: boolean;
+    cause_appended: boolean;
+    procedure: string;
+    mail: string;
+  }> {
     if (!this.cfg.defaultUserId) {
       throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (auteur de l'action).");
     }
@@ -437,12 +444,16 @@ export class GestsupClient {
       form: {
         author_id: this.cfg.defaultUserId,
         ticket_id: input.ticket_id,
+        resolution: input.resolution,
         cause: input.cause,
         procedure_id: input.procedure_id,
         procedure_text: input.procedure_text,
-        resolution: input.resolution,
         time: input.time ?? 0,
         notify: input.notify === false ? 0 : 1,
+        incident_type_ids:
+          this.cfg.incidentTypeIds && this.cfg.incidentTypeIds.length
+            ? this.cfg.incidentTypeIds.join(",")
+            : undefined,
       },
     });
     if (status === 404 && !(body && typeof body === "object" && "resolved" in body)) {
@@ -456,6 +467,9 @@ export class GestsupClient {
     const b = body as Record<string, unknown>;
     return {
       resolved: Boolean(b.resolved),
+      ticket_type: String(b.ticket_type ?? ""),
+      cause_required: Boolean(b.cause_required),
+      cause_appended: Boolean(b.cause_appended),
       procedure: String(b.procedure ?? ""),
       mail: String(b.mail ?? ""),
     };

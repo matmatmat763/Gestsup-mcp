@@ -19,6 +19,8 @@ const ConfigSchema = z.object({
   allowWrites: z.boolean().default(true),
   /** Test uniquement : désactive la vérification du certificat TLS (auto-signé local). */
   insecureTls: z.boolean().default(false),
+  /** Ids des types considérés comme « incident » (cause obligatoire à la clôture). */
+  incidentTypeIds: z.array(z.number().int().positive()).optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -40,6 +42,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     insecureTls: env.GESTSUP_INSECURE_TLS
       ? env.GESTSUP_INSECURE_TLS.toLowerCase() === "true"
       : false,
+    incidentTypeIds: env.GESTSUP_INCIDENT_TYPE_IDS
+      ? env.GESTSUP_INCIDENT_TYPE_IDS.split(",")
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n) && n > 0)
+      : undefined,
   });
 
   // L'API GestSup refuse tout ce qui n'est pas le port 443 : on impose HTTPS.

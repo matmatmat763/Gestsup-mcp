@@ -257,21 +257,27 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     {
       title: "Clôturer un ticket (conforme)",
       description:
-        "Clôture un ticket en exigeant la conformité : une CAUSE (ajoutée à la fin de la description du ticket) ET une PROCÉDURE de résolution (procedure_id via gestsup_list_referential kind=procedure, et/ou texte libre). Résout le ticket et notifie le demandeur (clôture). Refuse la clôture si cause ou procédure manquante. Nécessite le plugin « gestsup_mcp ».",
+        "Clôture un ticket selon son type : un INCIDENT exige la CAUSE ET la RÉSOLUTION ; une DEMANDE exige au moins la RÉSOLUTION. La clôture est REFUSÉE si une obligation manque. La cause (si fournie) est ajoutée à la fin de la description du ticket ; la résolution est consignée. Résout le ticket et notifie le demandeur. Nécessite le plugin « gestsup_mcp ».",
       inputSchema: {
         ticket_id: z.number().int().positive().describe("Numéro du ticket."),
-        cause: z.string().min(1).describe("Cause de la résolution (ajoutée en fin de description)."),
+        resolution: z
+          .string()
+          .min(1)
+          .describe("Résolution : ce qui a permis de résoudre. Obligatoire (incident ET demande)."),
+        cause: z
+          .string()
+          .optional()
+          .describe("Cause (ajoutée en fin de description). Obligatoire pour un incident."),
         procedure_id: z
           .number()
           .int()
           .positive()
           .optional()
-          .describe("ID d'une procédure GestSup (kind=procedure)."),
+          .describe("ID d'une procédure GestSup (kind=procedure), optionnel."),
         procedure_text: z
           .string()
           .optional()
-          .describe("Procédure en texte libre (si pas/complément d'une procédure GestSup)."),
-        resolution: z.string().optional().describe("Commentaire de résolution additionnel."),
+          .describe("Procédure en texte libre, optionnel."),
         time: z.number().int().nonnegative().optional().describe("Temps passé (minutes)."),
         notify: z.boolean().default(true).describe("Notifier le demandeur de la clôture."),
       },
@@ -280,22 +286,22 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
       if (!cfg.allowWrites) {
         return fail(new GestsupError("Écriture désactivée (GESTSUP_ALLOW_WRITES=false)."));
       }
-      if (!args.procedure_id && !args.procedure_text) {
-        return fail(
-          new GestsupError("Clôture non conforme : indiquer une procédure (procedure_id et/ou procedure_text)."),
-        );
-      }
       try {
         const r = await client.closeTicket({
           ticket_id: args.ticket_id,
+          resolution: args.resolution,
           cause: args.cause,
           procedure_id: args.procedure_id,
           procedure_text: args.procedure_text,
-          resolution: args.resolution,
           time: args.time,
           notify: args.notify,
         });
-        return ok(`Ticket ${args.ticket_id} clôturé (cause ajoutée en description, mail: ${r.mail}).`, r);
+        const causeMsg = r.cause_appended
+          ? "cause ajoutée en description"
+          : r.cause_required
+            ? "cause requise"
+            : "sans cause";
+        return ok(`Ticket ${args.ticket_id} clôturé (type ${r.ticket_type}, ${causeMsg}, mail: ${r.mail}).`, r);
       } catch (e) {
         return fail(e);
       }

@@ -206,23 +206,27 @@ notification native.
 
 ### `POST /plugins/gestsup_mcp/ticket_close.php`
 
-Clôture **conforme** : exige une **cause** et une **procédure**, sinon refus
-(400). La cause est **ajoutée à la toute fin de la description** du ticket ; la
-résolution (commentaire + procédure) est consignée ; le ticket passe à l'état
-résolu (thread type 4 + `date_res`) puis le demandeur est notifié.
+Clôture **conforme selon le type** du ticket, sinon refus (400) :
+- **Incident** : `cause` **et** `resolution` obligatoires ;
+- **Demande** : `resolution` obligatoire (cause facultative).
+
+La `cause` (si fournie) est **ajoutée à la toute fin de la description** ; la
+`resolution` (+ procédure éventuelle) est consignée en commentaire ; le ticket
+passe à l'état résolu (thread type 4 + `date_res`) puis le demandeur est notifié.
 
 | Param | Requis | Description |
 |---|---|---|
 | `author_id` | ✅ | Technicien auteur |
 | `ticket_id` | ✅ | Numéro du ticket |
-| `cause` | ✅ | Cause de résolution (ajoutée en fin de description) |
-| `procedure_id` | ✱ | Procédure GestSup (`kind=procedure`) |
-| `procedure_text` | ✱ | Procédure en texte libre |
-| `resolution` | ❌ | Commentaire de résolution additionnel |
+| `resolution` | ✅ | Ce qui a permis de résoudre (incident **et** demande) |
+| `cause` | ✱ | Cause — **obligatoire pour un incident** ; ajoutée en fin de description |
+| `procedure_id` / `procedure_text` | ❌ | Procédure (base et/ou texte), optionnel |
 | `time` | ❌ | Temps passé (minutes) |
 | `notify` | ❌ | Notifier le demandeur (défaut `1`) |
 
-✱ Fournir `procedure_id` **et/ou** `procedure_text` (au moins un).
+**Détection « incident »** : `incident_type_ids` (liste d'ids fournie par le
+MCP via `GESTSUP_INCIDENT_TYPE_IDS`) ; à défaut, repli sur le **nom du type**
+contenant « incident ». Override possible par `require_cause` (0/1).
 
 ### `POST /plugins/gestsup_mcp/ticket_create.php`
 
