@@ -3,6 +3,9 @@ import { z } from "zod";
 import type { Config } from "./config.js";
 import { GestsupError } from "./errors.js";
 import type { GestsupClient, ReferentialKind } from "./gestsupClient.js";
+import { VaultError, type VaultStore } from "./vault/store.js";
+import { assessTicketQuality } from "./quality.js";
+import { renderTicketNote } from "./docTemplate.js";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -15,12 +18,20 @@ function ok(text: string, data?: unknown): ToolResult {
 }
 
 function fail(e: unknown): ToolResult {
-  const msg = e instanceof GestsupError ? e.message : `Erreur inattendue : ${(e as Error).message}`;
+  const msg =
+    e instanceof GestsupError || e instanceof VaultError
+      ? e.message
+      : `Erreur inattendue : ${(e as Error).message}`;
   return { content: [{ type: "text", text: msg }], isError: true };
 }
 
-/** Enregistre tous les outils GestSup sur le serveur MCP. */
-export function registerTools(server: McpServer, client: GestsupClient, cfg: Config): void {
+/** Enregistre tous les outils GestSup (et la documentation Obsidian) sur le serveur MCP. */
+export function registerTools(
+  server: McpServer,
+  client: GestsupClient,
+  cfg: Config,
+  vault?: VaultStore,
+): void {
   // ----------------------------------------------------------- create ticket
   server.registerTool(
     "gestsup_create_ticket",
@@ -585,6 +596,227 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
       try {
         const items = await client.listReferential(args.kind as ReferentialKind);
         return ok(`${items.length} entrée(s) dans le référentiel « ${args.kind} ».`, items);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  // ----------------------------------------- évaluation qualité d'un ticket
+  server.registerTool(
+    "gestsup_assess_ticket_quality",
+    {
+      title: "Évaluer la richesse d'un ticket",
+      description:
+        "Évalue si un ticket est assez RICHE et PROPRE pour alimenter la documentation. Récupère le ticket et renvoie un rapport déterministe : score (0-100), signaux (description, résolution, clôture, type, titre), verdict « documentable », et liste des MANQUES. À utiliser avant gestsup_document_ticket pour décider quoi capitaliser. Lecture seule.",
+      inputSchema: {
+        ticket_id: z.number().int().positive().describe("Numéro du ticket à évaluer."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const t = await client.getTicket(args.ticket_id);
+        const report = assessTicketQuality(t, cfg.docQualityThreshold);
+        return ok(report.summary, report);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  // Les outils de documentation Obsidian ne sont enregistrés que si un vault
+  // est configuré (OBSIDIAN_VAULT_PATH).
+  if (vault) {
+    registerVaultTools(server, client, cfg, vault);
+  }
+}
+
+/** Outils de documentation Obsidian (filesystem) — agnostiques du client MCP. */
+function registerVaultTools(
+  server: McpServer,
+  client: GestsupClient,
+  cfg: Config,
+  vault: VaultStore,
+): void {
+  // ------------------------------------------------------ lister les notes
+  server.registerTool(
+    "obsidian_list_notes",
+    {
+      title: "Lister les notes (Obsidian)",
+      description:
+        "Liste les notes markdown du vault Obsidian, avec filtre optionnel par dossier et par motif sur le nom de fichier. Lecture seule.",
+      inputSchema: {
+        folder: z.string().optional().describe("Sous-dossier du vault (ex. « KB »). Vide = tout le vault."),
+        query: z.string().optional().describe("Filtre sur le chemin/nom de fichier (sous-chaîne)."),
+        limit: z.number().int().positive().max(1000).default(100).describe("Nombre max de notes."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const notes = await vault.listNotes({ folder: args.folder, query: args.query, limit: args.limit });
+        return ok(`${notes.length} note(s) trouvée(s).`, notes);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  // ----------------------------------------------------- recherche plein-texte
+  server.registerTool(
+    "obsidian_search",
+    {
+      title: "Rechercher dans les notes (Obsidian)",
+      description:
+        "Recherche plein-texte dans le vault Obsidian (titre, tags et corps). Renvoie les notes correspondantes avec un extrait. Lecture seule.",
+      inputSchema: {
+        query: z.string().min(1).describe("Texte à rechercher (insensible à la casse)."),
+        folder: z.string().optional().describe("Restreindre à un sous-dossier."),
+        limit: z.number().int().positive().max(200).default(20).describe("Nombre max de résultats."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const hits = await vault.search({ query: args.query, folder: args.folder, limit: args.limit });
+        return ok(`${hits.length} résultat(s) pour « ${args.query} ».`, hits);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  // ----------------------------------------------------------- lire une note
+  server.registerTool(
+    "obsidian_read_note",
+    {
+      title: "Lire une note (Obsidian)",
+      description:
+        "Lit une note du vault Obsidian par son chemin relatif (frontmatter + corps). Si la note n'existe pas, renvoie exists=false. Lecture seule.",
+      inputSchema: {
+        path: z.string().min(1).describe("Chemin relatif dans le vault (ex. « KB/imprimante.md »)."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const note = await vault.readNote(args.path);
+        return ok(note.exists ? `Note « ${note.path} » lue.` : `Note « ${note.path} » inexistante.`, note);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  // --------------------------------------------------- écrire/créer une note
+  server.registerTool(
+    "obsidian_write_note",
+    {
+      title: "Écrire une note (Obsidian)",
+      description:
+        "Crée ou remplace une note markdown dans le vault Obsidian. mode=create échoue si la note existe déjà ; mode=overwrite la remplace. Le frontmatter (tags, etc.) est optionnel ; les dates created/updated sont gérées automatiquement. Utile pour documenter de l'info issue d'une conversation. Nécessite OBSIDIAN_ALLOW_WRITES≠false.",
+      inputSchema: {
+        path: z.string().min(1).describe("Chemin relatif dans le vault (ex. « KB/vpn-acces.md »)."),
+        body: z.string().describe("Contenu markdown de la note (corps, hors frontmatter)."),
+        title: z.string().optional().describe("Titre (ajouté au frontmatter)."),
+        tags: z.array(z.string()).optional().describe("Tags Obsidian (frontmatter)."),
+        mode: z.enum(["create", "overwrite"]).default("create").describe("create = échoue si existe ; overwrite = remplace."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const fm: Record<string, string | number | boolean | string[]> = {};
+        if (args.title) fm.title = args.title;
+        if (args.tags && args.tags.length > 0) fm.tags = args.tags;
+        const r = await vault.writeNote({ path: args.path, body: args.body, frontmatter: fm, mode: args.mode });
+        return ok(`Note « ${r.path} » ${r.created ? "créée" : "mise à jour"}.`, r);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  // ------------------------------------------- ajouter/compléter une section
+  server.registerTool(
+    "obsidian_append_section",
+    {
+      title: "Compléter une section (Obsidian)",
+      description:
+        "Ajoute ou remplace une section sous un titre « ## <heading> » dans une note du vault. Crée la note si elle n'existe pas. mode=append ajoute à la suite de la section existante ; mode=replace remplace son contenu. Idéal pour enrichir la documentation au fil du temps. Nécessite OBSIDIAN_ALLOW_WRITES≠false.",
+      inputSchema: {
+        path: z.string().min(1).describe("Chemin relatif de la note (ex. « KB/imprimante.md »)."),
+        heading: z.string().min(1).describe("Titre de la section (sans les #)."),
+        content: z.string().min(1).describe("Contenu markdown à insérer dans la section."),
+        mode: z.enum(["append", "replace"]).default("append").describe("append = ajoute ; replace = remplace le contenu de la section."),
+        title: z.string().optional().describe("Titre (frontmatter) si la note est créée."),
+        tags: z.array(z.string()).optional().describe("Tags (frontmatter) si la note est créée."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const fmNew: Record<string, string | number | boolean | string[]> = {};
+        if (args.title) fmNew.title = args.title;
+        if (args.tags && args.tags.length > 0) fmNew.tags = args.tags;
+        const r = await vault.appendSection({
+          path: args.path,
+          heading: args.heading,
+          content: args.content,
+          mode: args.mode,
+          frontmatterIfNew: fmNew,
+        });
+        const what = r.created ? "créée" : r.sectionReplaced ? "section remplacée" : "section complétée";
+        return ok(`Note « ${r.path} » : ${what}.`, r);
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  // ------------------------------------ documenter un ticket dans le vault
+  server.registerTool(
+    "gestsup_document_ticket",
+    {
+      title: "Documenter un ticket (Obsidian)",
+      description:
+        "Récupère un ticket GestSup, l'évalue (richesse), puis génère un article de knowledge base markdown dans le vault Obsidian (Problème / Contexte / Résolution / Liens). " +
+        "AVERTIT si le ticket est pauvre (verdict + manques) mais documente quand même si demandé — c'est au LLM de décider. " +
+        "mode=create (échoue si la note existe), overwrite (remplace), dry_run (rend le markdown SANS écrire). Nécessite OBSIDIAN_ALLOW_WRITES≠false (sauf dry_run).",
+      inputSchema: {
+        ticket_id: z.number().int().positive().describe("Numéro du ticket à documenter."),
+        mode: z.enum(["create", "overwrite", "dry_run"]).default("create").describe("create / overwrite / dry_run."),
+        folder: z.string().optional().describe("Sous-dossier cible (défaut : OBSIDIAN_DOCS_FOLDER)."),
+        slug: z.string().optional().describe("Nom de fichier (sans .md) ; défaut dérivé du ticket."),
+        skip_if_poor: z.boolean().default(false).describe("Si true, n'écrit pas quand le ticket n'est pas « documentable »."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const t = await client.getTicket(args.ticket_id);
+        const report = assessTicketQuality(t, cfg.docQualityThreshold);
+        const rendered = renderTicketNote(t, cfg.baseUrl);
+        const slug = args.slug ?? rendered.slug;
+        const folder = (args.folder ?? vault.docsFolder).replace(/^\/+|\/+$/g, "");
+        const notePath = folder ? `${folder}/${slug}.md` : `${slug}.md`;
+
+        if (args.mode === "dry_run") {
+          return ok(
+            `Aperçu (dry_run) — ${report.summary}`,
+            { path: notePath, quality: report, frontmatter: rendered.frontmatter, body: rendered.body },
+          );
+        }
+
+        if (args.skip_if_poor && !report.documentable) {
+          return ok(`Documentation ignorée : ${report.summary}`, { written: false, quality: report });
+        }
+
+        const r = await vault.writeNote({
+          path: notePath,
+          body: rendered.body,
+          frontmatter: rendered.frontmatter,
+          mode: args.mode,
+        });
+        const warn = report.documentable ? "" : `⚠️ ${report.summary} `;
+        return ok(
+          `${warn}Ticket ${t.ticket_id} documenté dans « ${r.path} » (${r.created ? "créée" : "mise à jour"}).`,
+          { written: true, ...r, quality: report },
+        );
       } catch (e) {
         return fail(e);
       }

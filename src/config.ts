@@ -21,6 +21,14 @@ const ConfigSchema = z.object({
   insecureTls: z.boolean().default(false),
   /** Ids des types considérés comme « incident » (cause obligatoire à la clôture). */
   incidentTypeIds: z.array(z.number().int().positive()).optional(),
+  /** Racine du vault Obsidian (active les outils de documentation si défini). */
+  vaultPath: z.string().min(1).optional(),
+  /** Sous-dossier par défaut des notes générées dans le vault. */
+  vaultDocsFolder: z.string().default("KB"),
+  /** Kill-switch écriture pour le vault Obsidian. */
+  vaultAllowWrites: z.boolean().default(true),
+  /** Score minimal (0-100) pour juger un ticket « documentable ». */
+  docQualityThreshold: z.number().int().min(0).max(100).default(60),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -47,6 +55,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
           .map((s) => Number(s.trim()))
           .filter((n) => Number.isFinite(n) && n > 0)
       : undefined,
+    vaultPath: env.OBSIDIAN_VAULT_PATH?.trim() || undefined,
+    vaultDocsFolder: (env.OBSIDIAN_DOCS_FOLDER ?? "KB").trim() || "KB",
+    vaultAllowWrites: env.OBSIDIAN_ALLOW_WRITES
+      ? env.OBSIDIAN_ALLOW_WRITES.toLowerCase() !== "false"
+      : true,
+    docQualityThreshold: env.GESTSUP_DOC_QUALITY_THRESHOLD
+      ? Number(env.GESTSUP_DOC_QUALITY_THRESHOLD)
+      : 60,
   });
 
   // L'API GestSup refuse tout ce qui n'est pas le port 443 : on impose HTTPS.
