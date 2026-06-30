@@ -10,6 +10,7 @@ GestSup** qui ajoute les endpoints manquants (recherche + écritures) et d'une
 | Élément | Description |
 |---|---|
 | **Serveur MCP** (`src/`) | Outils de gestion de tickets (lecture + écriture) à brancher sur un client MCP. |
+| [`docs/installation.md`](docs/installation.md) | **Installation pas à pas**, partie par partie (GestSup → stockage → MCP → client). |
 | [`docs/guide-demarrage.md`](docs/guide-demarrage.md) | **Guide de démarrage** : brancher GestSup + vault Obsidian (local ou serveur SMB/NFS) sur Hermes/Claude. |
 | **Plugin GestSup** ([`plugin/gestsup_mcp/`](plugin/gestsup_mcp/)) | Addon serveur (PHP) : endpoints de recherche et d'écriture, qui répliquent la logique native et réutilisent le mailer natif. |
 | [`docs/gestsup-api.md`](docs/gestsup-api.md) | Documentation de l'API REST GestSup native, reconstruite depuis le code source. |
