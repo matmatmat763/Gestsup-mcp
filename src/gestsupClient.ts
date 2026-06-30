@@ -16,13 +16,7 @@ type Json = Record<string, unknown> | unknown[] | null;
 export type NativeReferentialKind = "type" | "category" | "subcat" | "place";
 /** Référentiels via le plugin (définis par l'instance, lus en base). */
 export type PluginReferentialKind =
-  | "state"
-  | "priority"
-  | "criticality"
-  | "cause"
-  | "group"
-  | "technician"
-  | "procedure";
+  "state" | "priority" | "criticality" | "cause" | "group" | "technician" | "procedure";
 export type ReferentialKind = NativeReferentialKind | PluginReferentialKind;
 
 export interface ReferentialItem {
@@ -150,9 +144,7 @@ export class GestsupClient {
     try {
       res = await this.fetchImpl(url, { method, headers, body, signal: controller.signal });
     } catch (e) {
-      throw new GestsupError(
-        `Échec de la connexion à GestSup : ${(e as Error).message}`,
-      );
+      throw new GestsupError(`Échec de la connexion à GestSup : ${(e as Error).message}`);
     } finally {
       clearTimeout(timer);
     }
@@ -233,33 +225,43 @@ export class GestsupClient {
     date_hope?: string;
     state_id?: number;
     notify?: boolean;
-  }): Promise<{ ticket_id: string; ticket_url: string; user: string; state: string; mail: string }> {
+  }): Promise<{
+    ticket_id: string;
+    ticket_url: string;
+    user: string;
+    state: string;
+    mail: string;
+  }> {
     if (!this.cfg.defaultUserId) {
       throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (créateur du ticket).");
     }
-    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_create.php", {
-      urlencoded: true,
-      form: {
-        author_id: this.cfg.defaultUserId,
-        title: input.title,
-        description: input.description,
-        requester_id: input.requester_id,
-        requester_email: input.requester_email,
-        type: input.type_id,
-        category: input.category_id,
-        subcat: input.subcat_id,
-        priority: input.priority_id,
-        criticality: input.criticality_id,
-        place: input.place_id,
-        technician_id: input.technician_id,
-        group_id: input.group_id,
-        time: input.time,
-        time_hope: input.time_hope,
-        date_hope: input.date_hope,
-        state: input.state_id,
-        notify: input.notify === false ? 0 : 1,
+    const { status, body } = await this.callAbsolute(
+      "POST",
+      "/plugins/gestsup_mcp/ticket_create.php",
+      {
+        urlencoded: true,
+        form: {
+          author_id: this.cfg.defaultUserId,
+          title: input.title,
+          description: input.description,
+          requester_id: input.requester_id,
+          requester_email: input.requester_email,
+          type: input.type_id,
+          category: input.category_id,
+          subcat: input.subcat_id,
+          priority: input.priority_id,
+          criticality: input.criticality_id,
+          place: input.place_id,
+          technician_id: input.technician_id,
+          group_id: input.group_id,
+          time: input.time,
+          time_hope: input.time_hope,
+          date_hope: input.date_hope,
+          state: input.state_id,
+          notify: input.notify === false ? 0 : 1,
+        },
       },
-    });
+    );
     if (status === 404 && !(body && typeof body === "object" && "ticket_id" in body)) {
       throw new GestsupError(
         "Endpoint plugin introuvable (404). Plugin « gestsup_mcp » installé ?",
@@ -325,7 +327,11 @@ export class GestsupClient {
           ? String((body as Record<string, unknown>).message ?? "")
           : "";
       if (/User not found/i.test(msg)) {
-        throw new GestsupError(`Utilisateur ${input.user_id} introuvable.`, 404, "TicketsFindByUser");
+        throw new GestsupError(
+          `Utilisateur ${input.user_id} introuvable.`,
+          404,
+          "TicketsFindByUser",
+        );
       }
       return []; // aucun ticket => liste vide (plus naturel qu'une erreur)
     }
@@ -392,9 +398,13 @@ export class GestsupClient {
     }
 
     // Référentiels définis par l'instance (état/priorité/criticité/cause), via le plugin
-    const { status, body } = await this.callAbsolute("GET", "/plugins/gestsup_mcp/referentials.php", {
-      query: { kind },
-    });
+    const { status, body } = await this.callAbsolute(
+      "GET",
+      "/plugins/gestsup_mcp/referentials.php",
+      {
+        query: { kind },
+      },
+    );
     if (status === 404) {
       throw new GestsupError(
         "Plugin gestsup_mcp non installé (référentiels étendus indisponibles).",
@@ -439,23 +449,27 @@ export class GestsupClient {
     if (!this.cfg.defaultUserId) {
       throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (auteur de l'action).");
     }
-    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_close.php", {
-      urlencoded: true,
-      form: {
-        author_id: this.cfg.defaultUserId,
-        ticket_id: input.ticket_id,
-        resolution: input.resolution,
-        cause: input.cause,
-        procedure_id: input.procedure_id,
-        procedure_text: input.procedure_text,
-        time: input.time ?? 0,
-        notify: input.notify === false ? 0 : 1,
-        incident_type_ids:
-          this.cfg.incidentTypeIds && this.cfg.incidentTypeIds.length
-            ? this.cfg.incidentTypeIds.join(",")
-            : undefined,
+    const { status, body } = await this.callAbsolute(
+      "POST",
+      "/plugins/gestsup_mcp/ticket_close.php",
+      {
+        urlencoded: true,
+        form: {
+          author_id: this.cfg.defaultUserId,
+          ticket_id: input.ticket_id,
+          resolution: input.resolution,
+          cause: input.cause,
+          procedure_id: input.procedure_id,
+          procedure_text: input.procedure_text,
+          time: input.time ?? 0,
+          notify: input.notify === false ? 0 : 1,
+          incident_type_ids:
+            this.cfg.incidentTypeIds && this.cfg.incidentTypeIds.length
+              ? this.cfg.incidentTypeIds.join(",")
+              : undefined,
+        },
       },
-    });
+    );
     if (status === 404 && !(body && typeof body === "object" && "resolved" in body)) {
       throw new GestsupError(
         "Endpoint plugin introuvable (404) ou ticket inexistant. Plugin « gestsup_mcp » installé ?",
@@ -498,16 +512,20 @@ export class GestsupClient {
     if (!input.technician_id && !input.group_id) {
       throw new GestsupError("Préciser technician_id ou group_id.");
     }
-    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_assign.php", {
-      urlencoded: true,
-      form: {
-        author_id: this.cfg.defaultUserId,
-        ticket_id: input.ticket_id,
-        technician_id: input.technician_id,
-        group_id: input.group_id,
-        notify: input.notify === false ? 0 : 1,
+    const { status, body } = await this.callAbsolute(
+      "POST",
+      "/plugins/gestsup_mcp/ticket_assign.php",
+      {
+        urlencoded: true,
+        form: {
+          author_id: this.cfg.defaultUserId,
+          ticket_id: input.ticket_id,
+          technician_id: input.technician_id,
+          group_id: input.group_id,
+          notify: input.notify === false ? 0 : 1,
+        },
       },
-    });
+    );
     if (status === 404 && !(body && typeof body === "object" && "assigned_to" in body)) {
       throw new GestsupError(
         "Endpoint plugin introuvable (404) ou ticket inexistant. Plugin « gestsup_mcp » installé ?",
@@ -549,18 +567,22 @@ export class GestsupClient {
     if (!this.cfg.defaultUserId) {
       throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (auteur de l'action).");
     }
-    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_state.php", {
-      urlencoded: true,
-      form: {
-        author_id: this.cfg.defaultUserId,
-        ticket_id: input.ticket_id,
-        state_id: input.state_id,
-        text: input.text,
-        private: input.isPrivate ? 1 : 0,
-        time: input.time ?? 0,
-        notify: input.notify === false ? 0 : 1,
+    const { status, body } = await this.callAbsolute(
+      "POST",
+      "/plugins/gestsup_mcp/ticket_state.php",
+      {
+        urlencoded: true,
+        form: {
+          author_id: this.cfg.defaultUserId,
+          ticket_id: input.ticket_id,
+          state_id: input.state_id,
+          text: input.text,
+          private: input.isPrivate ? 1 : 0,
+          time: input.time ?? 0,
+          notify: input.notify === false ? 0 : 1,
+        },
       },
-    });
+    );
     if (status === 404 && !(body && typeof body === "object" && "new_state" in body)) {
       throw new GestsupError(
         "Endpoint plugin introuvable (404) ou ticket inexistant. Plugin « gestsup_mcp » installé ?",
@@ -600,22 +622,26 @@ export class GestsupClient {
     if (!this.cfg.defaultUserId) {
       throw new GestsupError("GESTSUP_DEFAULT_USER_ID est requis (auteur de l'action).");
     }
-    const { status, body } = await this.callAbsolute("POST", "/plugins/gestsup_mcp/ticket_update.php", {
-      urlencoded: true,
-      form: {
-        author_id: this.cfg.defaultUserId,
-        ticket_id: input.ticket_id,
-        category: input.category_id,
-        subcat: input.subcat_id,
-        priority: input.priority_id,
-        criticality: input.criticality_id,
-        type: input.type_id,
-        place: input.place_id,
-        time: input.time,
-        time_hope: input.time_hope,
-        notify: input.notify === false ? 0 : 1,
+    const { status, body } = await this.callAbsolute(
+      "POST",
+      "/plugins/gestsup_mcp/ticket_update.php",
+      {
+        urlencoded: true,
+        form: {
+          author_id: this.cfg.defaultUserId,
+          ticket_id: input.ticket_id,
+          category: input.category_id,
+          subcat: input.subcat_id,
+          priority: input.priority_id,
+          criticality: input.criticality_id,
+          type: input.type_id,
+          place: input.place_id,
+          time: input.time,
+          time_hope: input.time_hope,
+          notify: input.notify === false ? 0 : 1,
+        },
       },
-    });
+    );
     if (status === 404 && !(body && typeof body === "object" && "updated" in body)) {
       throw new GestsupError(
         "Endpoint plugin introuvable (404) ou ticket inexistant. Plugin « gestsup_mcp » installé ?",
@@ -658,11 +684,9 @@ export class GestsupClient {
     if (input.date_from !== undefined) query.date_from = input.date_from;
     if (input.date_to !== undefined) query.date_to = input.date_to;
 
-    const { status, body } = await this.callAbsolute(
-      "GET",
-      "/plugins/gestsup_mcp/tickets.php",
-      { query },
-    );
+    const { status, body } = await this.callAbsolute("GET", "/plugins/gestsup_mcp/tickets.php", {
+      query,
+    });
 
     if (status === 404) {
       throw new GestsupError(

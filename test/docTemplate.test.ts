@@ -45,9 +45,7 @@ describe("renderTicketNote", () => {
     expect(r.body).toContain("Voyant rouge");
     expect(r.body).toContain("## Résolution");
     expect(r.body).toContain("Remplacement du toner.");
-    expect(r.body).toContain(
-      "https://support.exemple.fr/index.php?page=ticket&id=1234",
-    );
+    expect(r.body).toContain("https://support.exemple.fr/index.php?page=ticket&id=1234");
   });
 
   it("gère un ticket sans résolution", () => {

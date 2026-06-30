@@ -203,10 +203,17 @@ du MCP : [README du stack](docker/README.md). Revalidation bout-en-bout :
 ## Développement & tests
 
 ```bash
-npm run typecheck   # types
-npm test            # tests unitaires (vitest, réseau simulé)
-npm run dev         # compilation en watch
+npm run typecheck     # types
+npm run lint          # ESLint
+npm run format        # Prettier (écriture) ; format:check pour vérifier
+npm test              # tests unitaires (vitest, réseau simulé)
+npm run build         # compilation
+npm run dev           # compilation en watch
 ```
+
+CI : [`.github/workflows/ci.yml`](.github/workflows/ci.yml) lance lint, format,
+typecheck, tests et build (Node) + un lint de syntaxe PHP du plugin, à chaque
+push et pull request.
 
 Inspecter le serveur : `npx @modelcontextprotocol/inspector node dist/index.js`.
 

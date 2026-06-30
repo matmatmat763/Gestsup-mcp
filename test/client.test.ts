@@ -44,9 +44,15 @@ describe("GestsupClient.createTicket", () => {
   });
 
   it("lève une GestsupError sur 400", async () => {
-    const { impl } = fakeFetch(400, { code: 1, type: "error", message: "Missing required ticket_title field" });
+    const { impl } = fakeFetch(400, {
+      code: 1,
+      type: "error",
+      message: "Missing required ticket_title field",
+    });
     const client = new GestsupClient(cfg, impl);
-    await expect(client.createTicket({ title: "", description: "" })).rejects.toBeInstanceOf(GestsupError);
+    await expect(client.createTicket({ title: "", description: "" })).rejects.toBeInstanceOf(
+      GestsupError,
+    );
   });
 });
 
@@ -60,7 +66,11 @@ describe("GestsupClient.getTicket", () => {
 
 describe("GestsupClient.findTicketsByUser", () => {
   it("renvoie une liste vide quand aucun ticket (404 No tickets)", async () => {
-    const { impl } = fakeFetch(404, { code: 1, type: "error", message: "No tickets found for user id 5" });
+    const { impl } = fakeFetch(404, {
+      code: 1,
+      type: "error",
+      message: "No tickets found for user id 5",
+    });
     const client = new GestsupClient(cfg, impl);
     const r = await client.findTicketsByUser({
       user_id: 5,
@@ -73,7 +83,11 @@ describe("GestsupClient.findTicketsByUser", () => {
   });
 
   it("lève une erreur si l'utilisateur n'existe pas", async () => {
-    const { impl } = fakeFetch(404, { code: 1, type: "error", message: "User not found in database application (5)" });
+    const { impl } = fakeFetch(404, {
+      code: 1,
+      type: "error",
+      message: "User not found in database application (5)",
+    });
     const client = new GestsupClient(cfg, impl);
     await expect(
       client.findTicketsByUser({ user_id: 5, order: "id", sort: "ASC", limit: 10, page: 0 }),
@@ -120,7 +134,13 @@ describe("GestsupClient.listReferential", () => {
 
   it("mappe les sous-catégories avec la catégorie parente", async () => {
     const { impl } = fakeFetch(200, [
-      { code: "0", action: "TicketCategoryList", category_id: 3, subcat_id: 7, subcat_name: "Wi-Fi" },
+      {
+        code: "0",
+        action: "TicketCategoryList",
+        category_id: 3,
+        subcat_id: 7,
+        subcat_name: "Wi-Fi",
+      },
     ]);
     const client = new GestsupClient(cfg, impl);
     const r = await client.listReferential("subcat");
@@ -202,17 +222,17 @@ describe("GestsupClient.addComment (plugin gestsup_mcp)", () => {
   it("exige GESTSUP_DEFAULT_USER_ID", async () => {
     const { impl } = fakeFetch(200, {});
     const client = new GestsupClient(cfg, impl); // sans defaultUserId
-    await expect(
-      client.addComment({ ticket_id: 1, text: "x", isPrivate: false }),
-    ).rejects.toThrow(/DEFAULT_USER_ID/);
+    await expect(client.addComment({ ticket_id: 1, text: "x", isPrivate: false })).rejects.toThrow(
+      /DEFAULT_USER_ID/,
+    );
   });
 
   it("signale clairement si le plugin n'est pas installé (404)", async () => {
     const { impl } = fakeFetch(404, "Not Found");
     const client = new GestsupClient({ ...cfg, defaultUserId: 10 }, impl);
-    await expect(
-      client.addComment({ ticket_id: 1, text: "x", isPrivate: false }),
-    ).rejects.toThrow(/gestsup_mcp/);
+    await expect(client.addComment({ ticket_id: 1, text: "x", isPrivate: false })).rejects.toThrow(
+      /gestsup_mcp/,
+    );
   });
 });
 
@@ -258,7 +278,11 @@ describe("GestsupClient.closeTicket (plugin gestsup_mcp)", () => {
       mail: "sent",
     });
     const client = new GestsupClient({ ...cfg, defaultUserId: 11 }, impl);
-    const r = await client.closeTicket({ ticket_id: 4, resolution: "Disque remplacé", cause: "Disque HS" });
+    const r = await client.closeTicket({
+      ticket_id: 4,
+      resolution: "Disque remplacé",
+      cause: "Disque HS",
+    });
     expect(r.resolved).toBe(true);
     expect(r.cause_required).toBe(true);
     expect(calls[0].url).toContain("/plugins/gestsup_mcp/ticket_close.php");
@@ -271,9 +295,9 @@ describe("GestsupClient.closeTicket (plugin gestsup_mcp)", () => {
       message: "Clôture non conforme : la CAUSE est obligatoire pour un incident.",
     });
     const client = new GestsupClient({ ...cfg, defaultUserId: 11 }, impl);
-    await expect(
-      client.closeTicket({ ticket_id: 4, resolution: "ok" }),
-    ).rejects.toThrow(/non conforme/);
+    await expect(client.closeTicket({ ticket_id: 4, resolution: "ok" })).rejects.toThrow(
+      /non conforme/,
+    );
   });
 });
 
@@ -301,7 +325,9 @@ describe("GestsupClient.updateTicket (plugin gestsup_mcp)", () => {
       message: "Valeur priority=99 inconnue dans l'instance (référentiel tpriority).",
     });
     const client = new GestsupClient({ ...cfg, defaultUserId: 1 }, impl);
-    await expect(client.updateTicket({ ticket_id: 3, priority_id: 99 })).rejects.toThrow(/inconnue/);
+    await expect(client.updateTicket({ ticket_id: 3, priority_id: 99 })).rejects.toThrow(
+      /inconnue/,
+    );
   });
 });
 
@@ -386,7 +412,12 @@ describe("GestsupClient.listReferential (états via plugin)", () => {
 
 describe("GestsupClient (auth basic)", () => {
   it("envoie l'en-tête Authorization Basic", async () => {
-    const { impl, calls } = fakeFetch(200, { code: 0, ticket_id: 1, ticket_url: "u", message: "m" });
+    const { impl, calls } = fakeFetch(200, {
+      code: 0,
+      ticket_id: 1,
+      ticket_url: "u",
+      message: "m",
+    });
     const client = new GestsupClient({ ...cfg, authMode: "basic" }, impl);
     await client.createTicket({ title: "T", description: "D" });
     const expected = "Basic " + Buffer.from("TESTKEY").toString("base64");

@@ -19,7 +19,7 @@ function quoteIfNeeded(s: string): string {
   // ou si elle pourrait être réinterprétée (nombre, booléen, vide…).
   if (
     s === "" ||
-    /[:#\[\]{}",&*!|>'%@`]/.test(s) ||
+    /[:#[\]{}",&*!|>'%@`]/.test(s) ||
     /^\s|\s$/.test(s) ||
     /^(true|false|null|yes|no|~)$/i.test(s) ||
     /^[-+]?\d/.test(s)
@@ -103,7 +103,7 @@ export interface ParsedNote {
 /** Sépare le frontmatter (si présent) du corps d'une note markdown. */
 export function parseNote(content: string): ParsedNote {
   // Tolère un BOM / des fins de ligne Windows.
-  const text = content.replace(/^﻿/, "");
+  const text = content.replace(/^\uFEFF/, "");
   const lines = text.split(/\r?\n/);
   if (lines[0]?.trim() !== FENCE) {
     return { frontmatter: {}, body: text };

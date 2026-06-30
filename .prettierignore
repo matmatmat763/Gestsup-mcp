@@ -1,0 +1,8 @@
+dist
+node_modules
+docs
+docker
+test-integration
+package-lock.json
+plugin
+*.md

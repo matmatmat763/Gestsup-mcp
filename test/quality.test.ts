@@ -71,7 +71,8 @@ describe("assessTicketQuality", () => {
           thread_type_name: "attribution",
           thread_date: "2025-02-01 10:05:00",
           thread_author: "Système",
-          thread_text: "Attribué à Jean Dupont (texte assez long pour dépasser le seuil de contenu).",
+          thread_text:
+            "Attribué à Jean Dupont (texte assez long pour dépasser le seuil de contenu).",
         },
       ],
     });

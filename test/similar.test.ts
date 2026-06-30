@@ -29,7 +29,12 @@ function ticket(over: Partial<Ticket> = {}): Ticket {
   };
 }
 
-function note(path: string, title: string, body: string, fm: Record<string, unknown> = {}): NoteContent {
+function note(
+  path: string,
+  title: string,
+  body: string,
+  fm: Record<string, unknown> = {},
+): NoteContent {
   return { path, title, exists: true, frontmatter: { title, ...fm }, body };
 }
 
@@ -43,7 +48,9 @@ describe("tokenize / coverage", () => {
   });
 
   it("coverage = part des termes de a présents dans b", () => {
-    expect(coverage(tokenize("toner spouleur"), tokenize("remplacement du toner"))).toBeCloseTo(0.5);
+    expect(coverage(tokenize("toner spouleur"), tokenize("remplacement du toner"))).toBeCloseTo(
+      0.5,
+    );
     expect(coverage(new Set(), tokenize("x"))).toBe(0);
   });
 });
@@ -78,7 +85,9 @@ describe("findSimilarNotes", () => {
   });
 
   it("reconnaît une note documentant déjà CE ticket (frontmatter)", () => {
-    const notes = [note("KB/x.md", "Autre sujet", "Contenu sans rapport.", { gestsup_ticket_id: 1234 })];
+    const notes = [
+      note("KB/x.md", "Autre sujet", "Contenu sans rapport.", { gestsup_ticket_id: 1234 }),
+    ];
     const r = findSimilarNotes(ticket(), notes);
     expect(r.duplicate?.sameTicket).toBe(true);
   });

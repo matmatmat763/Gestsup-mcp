@@ -9,7 +9,9 @@ import type { GestsupClient } from "../src/gestsupClient.js";
 import type { Ticket } from "../src/normalize.js";
 
 /** Faux serveur MCP : capture les handlers d'outils par nom. */
-type Handler = (args: any) => Promise<{ content: { type: string; text: string }[]; isError?: boolean }>;
+type Handler = (
+  args: any,
+) => Promise<{ content: { type: string; text: string }[]; isError?: boolean }>;
 class FakeServer {
   handlers = new Map<string, Handler>();
   registerTool(name: string, _def: unknown, handler: Handler) {
@@ -52,7 +54,12 @@ function mockClient(over: Partial<Record<keyof GestsupClient, any>> = {}): Gests
   const base: any = {
     getTicket: async () => richTicket,
     createTicket: async () => ({ ticket_id: "9", ticket_url: "u", message: "ok" }),
-    closeTicket: async () => ({ ticket_type: "Incident", cause_appended: true, cause_required: true, mail: "sent" }),
+    closeTicket: async () => ({
+      ticket_type: "Incident",
+      cause_appended: true,
+      cause_required: true,
+      mail: "sent",
+    }),
   };
   return { ...base, ...over } as GestsupClient;
 }
@@ -148,10 +155,21 @@ describe("gestsup_document_ticket", () => {
   });
 
   it("skip_if_poor n'écrit pas un ticket pauvre", async () => {
-    const poor: Ticket = { ...richTicket, description: "x", title: "bug", resolution: [], type_id: "0", type_name: "" };
+    const poor: Ticket = {
+      ...richTicket,
+      description: "x",
+      title: "bug",
+      resolution: [],
+      type_id: "0",
+      type_name: "",
+    };
     const s = new FakeServer();
     registerTools(s as any, mockClient({ getTicket: async () => poor }), cfg(), vault);
-    const r = await s.call("gestsup_document_ticket", { ticket_id: 1234, mode: "create", skip_if_poor: true });
+    const r = await s.call("gestsup_document_ticket", {
+      ticket_id: 1234,
+      mode: "create",
+      skip_if_poor: true,
+    });
     expect(r.content[0].text).toContain("ignorée");
     expect(await vault.listNotes({})).toHaveLength(0);
   });
@@ -180,7 +198,11 @@ describe("gestsup_suggest_documentation + clôture", () => {
   it("la réponse de clôture inclut la suggestion de documentation", async () => {
     const s = new FakeServer();
     registerTools(s as any, mockClient(), cfg(), vault);
-    const r = await s.call("gestsup_close_ticket", { ticket_id: 1234, resolution: "fait", cause: "panne" });
+    const r = await s.call("gestsup_close_ticket", {
+      ticket_id: 1234,
+      resolution: "fait",
+      cause: "panne",
+    });
     expect(r.content[0].text).toContain("📓");
   });
 });

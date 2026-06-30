@@ -1,10 +1,6 @@
 import { promises as fs, constants as fsConstants } from "node:fs";
 import path from "node:path";
-import {
-  Frontmatter,
-  parseNote,
-  stringifyNote,
-} from "./frontmatter.js";
+import { Frontmatter, parseNote, stringifyNote } from "./frontmatter.js";
 
 /** Erreur normalisée pour les opérations sur le vault. */
 export class VaultError extends Error {
@@ -74,8 +70,15 @@ export class VaultStore {
 
   /** Code d'erreur réseau typique d'un partage (SMB/NFS) démonté/injoignable. */
   private static readonly NETWORK_CODES = new Set([
-    "EIO", "ENOTCONN", "EHOSTDOWN", "EHOSTUNREACH", "ENETUNREACH",
-    "ETIMEDOUT", "ECONNREFUSED", "ESTALE", "EBUSY",
+    "EIO",
+    "ENOTCONN",
+    "EHOSTDOWN",
+    "EHOSTUNREACH",
+    "ENETUNREACH",
+    "ETIMEDOUT",
+    "ECONNREFUSED",
+    "ESTALE",
+    "EBUSY",
   ]);
 
   /** Transforme une erreur filesystem en message lisible (partage réseau inclus). */
@@ -88,10 +91,16 @@ export class VaultStore {
       );
     }
     if (code === "ENOTDIR") {
-      return new VaultError(`Le chemin du vault n'est pas un dossier (« ${this.root} »). [${context}]`, "BAD_ROOT");
+      return new VaultError(
+        `Le chemin du vault n'est pas un dossier (« ${this.root} »). [${context}]`,
+        "BAD_ROOT",
+      );
     }
     if (code === "EACCES" || code === "EPERM") {
-      return new VaultError(`Accès refusé au vault (« ${this.root} ») — vérifiez les droits du montage. [${context}]`, "ACCESS");
+      return new VaultError(
+        `Accès refusé au vault (« ${this.root} ») — vérifiez les droits du montage. [${context}]`,
+        "ACCESS",
+      );
     }
     if (VaultStore.NETWORK_CODES.has(code)) {
       return new VaultError(
@@ -99,7 +108,9 @@ export class VaultStore {
         "UNREACHABLE",
       );
     }
-    return new VaultError(`Erreur d'accès au vault (${code || "inconnue"}) : ${(e as Error).message}. [${context}]`);
+    return new VaultError(
+      `Erreur d'accès au vault (${code || "inconnue"}) : ${(e as Error).message}. [${context}]`,
+    );
   }
 
   /** Vérifie que la racine du vault est joignable (et un dossier). */
@@ -107,7 +118,10 @@ export class VaultStore {
     try {
       const st = await fs.stat(this.root);
       if (!st.isDirectory()) {
-        throw new VaultError(`Le chemin du vault n'est pas un dossier (« ${this.root} »). [${context}]`, "BAD_ROOT");
+        throw new VaultError(
+          `Le chemin du vault n'est pas un dossier (« ${this.root} »). [${context}]`,
+          "BAD_ROOT",
+        );
       }
     } catch (e) {
       if (e instanceof VaultError) throw e;
@@ -170,9 +184,7 @@ export class VaultStore {
 
   /** Construit un chemin de note dans le dossier docs, à partir d'un slug. */
   docPath(slug: string): string {
-    const clean = slug
-      .replace(/\.md$/i, "")
-      .replace(/[\/\\]+/g, "-");
+    const clean = slug.replace(/\.md$/i, "").replace(/[/\\]+/g, "-");
     const base = this.docsFolder ? `${this.docsFolder}/${clean}` : clean;
     return `${base}.md`;
   }
@@ -197,7 +209,10 @@ export class VaultStore {
 
   /** Résout un sous-dossier en absolu DANS le vault (anti path-traversal). */
   private resolveDir(subdir: string): string {
-    const clean = subdir.trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+    const clean = subdir
+      .trim()
+      .replace(/\\/g, "/")
+      .replace(/^\/+|\/+$/g, "");
     if (clean === "" || clean === ".") return this.root;
     if (path.isAbsolute(clean) || /^[a-zA-Z]:/.test(clean)) {
       throw new VaultError("Le dossier doit être relatif au vault.", "BAD_PATH");
@@ -244,7 +259,9 @@ export class VaultStore {
 
   // -------------------------------------------------------------- API
 
-  async listNotes(opts: { folder?: string; query?: string; limit?: number } = {}): Promise<NoteRef[]> {
+  async listNotes(
+    opts: { folder?: string; query?: string; limit?: number } = {},
+  ): Promise<NoteRef[]> {
     const all = await this.walk(opts.folder ?? "");
     const q = opts.query?.toLowerCase();
     const limit = Math.min(Math.max(opts.limit ?? 100, 1), 1000);
@@ -267,7 +284,13 @@ export class VaultStore {
       try {
         const raw = await fs.readFile(path.resolve(this.root, rel), "utf8");
         const { frontmatter, body } = parseNote(raw);
-        out.push({ path: rel, title: this.titleOf(frontmatter, rel), exists: true, frontmatter, body });
+        out.push({
+          path: rel,
+          title: this.titleOf(frontmatter, rel),
+          exists: true,
+          frontmatter,
+          body,
+        });
       } catch {
         // note illisible : ignorée
       }
@@ -286,7 +309,13 @@ export class VaultStore {
       return { path: rel, title: this.titleOf(frontmatter, rel), exists: true, frontmatter, body };
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code === "ENOENT") {
-        return { path: rel, title: rel.split("/").pop()!.replace(/\.md$/i, ""), exists: false, frontmatter: {}, body: "" };
+        return {
+          path: rel,
+          title: rel.split("/").pop()!.replace(/\.md$/i, ""),
+          exists: false,
+          frontmatter: {},
+          body: "",
+        };
       }
       throw this.mapFsError(e, "readNote");
     }
@@ -308,13 +337,20 @@ export class VaultStore {
       }
       const { frontmatter, body } = parseNote(raw);
       const title = this.titleOf(frontmatter, rel);
-      const tags = Array.isArray(frontmatter.tags) ? frontmatter.tags.join(" ") : String(frontmatter.tags ?? "");
+      const tags = Array.isArray(frontmatter.tags)
+        ? frontmatter.tags.join(" ")
+        : String(frontmatter.tags ?? "");
       let matchedIn: SearchHit["matchedIn"] | null = null;
       if (title.toLowerCase().includes(q)) matchedIn = "title";
       else if (tags.toLowerCase().includes(q)) matchedIn = "tags";
       else if (body.toLowerCase().includes(q)) matchedIn = "body";
       if (!matchedIn) continue;
-      hits.push({ path: rel, title, matchedIn, snippet: snippetAround(matchedIn === "body" ? body : `${title} ${tags}`, q) });
+      hits.push({
+        path: rel,
+        title,
+        matchedIn,
+        snippet: snippetAround(matchedIn === "body" ? body : `${title} ${tags}`, q),
+      });
     }
     return hits;
   }

@@ -42,10 +42,6 @@ export function mapError(status: number, body: unknown, action: string): Gestsup
     case 500:
       return new GestsupError(`Erreur interne GestSup (500)${suffix}.`, 500, action);
     default:
-      return new GestsupError(
-        apiMsg || `Erreur GestSup (HTTP ${status}).`,
-        status,
-        action,
-      );
+      return new GestsupError(apiMsg || `Erreur GestSup (HTTP ${status}).`, status, action);
   }
 }

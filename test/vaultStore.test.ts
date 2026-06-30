@@ -28,7 +28,11 @@ describe("VaultStore — sécurité des chemins", () => {
 
 describe("VaultStore — write/read", () => {
   it("crée puis relit une note avec frontmatter", async () => {
-    const r = await vault.writeNote({ path: "KB/test.md", body: "# Hello\n\nCorps", frontmatter: { tags: ["a"] } });
+    const r = await vault.writeNote({
+      path: "KB/test.md",
+      body: "# Hello\n\nCorps",
+      frontmatter: { tags: ["a"] },
+    });
     expect(r.created).toBe(true);
     const note = await vault.readNote("KB/test");
     expect(note.exists).toBe(true);
@@ -40,7 +44,9 @@ describe("VaultStore — write/read", () => {
 
   it("mode create échoue si la note existe", async () => {
     await vault.writeNote({ path: "KB/dup.md", body: "x" });
-    await expect(vault.writeNote({ path: "KB/dup.md", body: "y" })).rejects.toMatchObject({ code: "EXISTS" });
+    await expect(vault.writeNote({ path: "KB/dup.md", body: "y" })).rejects.toMatchObject({
+      code: "EXISTS",
+    });
   });
 
   it("mode overwrite remplace", async () => {
@@ -58,7 +64,9 @@ describe("VaultStore — write/read", () => {
 
   it("refuse l'écriture en lecture seule", async () => {
     const ro = new VaultStore({ root, docsFolder: "KB", allowWrites: false });
-    await expect(ro.writeNote({ path: "KB/x.md", body: "x" })).rejects.toMatchObject({ code: "READONLY" });
+    await expect(ro.writeNote({ path: "KB/x.md", body: "x" })).rejects.toMatchObject({
+      code: "READONLY",
+    });
   });
 });
 
@@ -83,7 +91,12 @@ describe("VaultStore — appendSection", () => {
 
   it("remplace le contenu d'une section (replace)", async () => {
     await vault.appendSection({ path: "KB/s.md", heading: "Notes", content: "ancien" });
-    const r = await vault.appendSection({ path: "KB/s.md", heading: "Notes", content: "nouveau", mode: "replace" });
+    const r = await vault.appendSection({
+      path: "KB/s.md",
+      heading: "Notes",
+      content: "nouveau",
+      mode: "replace",
+    });
     expect(r.sectionReplaced).toBe(true);
     const note = await vault.readNote("KB/s.md");
     expect(note.body).toContain("nouveau");
@@ -91,7 +104,11 @@ describe("VaultStore — appendSection", () => {
   });
 
   it("n'affecte pas les sections voisines", async () => {
-    await vault.writeNote({ path: "KB/m.md", body: "## A\n\naaa\n\n## B\n\nbbb", mode: "overwrite" });
+    await vault.writeNote({
+      path: "KB/m.md",
+      body: "## A\n\naaa\n\n## B\n\nbbb",
+      mode: "overwrite",
+    });
     await vault.appendSection({ path: "KB/m.md", heading: "A", content: "plus", mode: "append" });
     const note = await vault.readNote("KB/m.md");
     expect(note.body).toContain("aaa");
@@ -109,19 +126,31 @@ describe("VaultStore — accessibilité (partage réseau)", () => {
   });
 
   it("healthCheck signale un vault introuvable (partage démonté)", async () => {
-    const gone = new VaultStore({ root: path.join(root, "absent"), docsFolder: "KB", allowWrites: true });
+    const gone = new VaultStore({
+      root: path.join(root, "absent"),
+      docsFolder: "KB",
+      allowWrites: true,
+    });
     const h = await gone.healthCheck();
     expect(h.ok).toBe(false);
     expect(h.message.toLowerCase()).toContain("mont");
   });
 
   it("readNote sur un vault injoignable lève UNREACHABLE", async () => {
-    const gone = new VaultStore({ root: path.join(root, "absent"), docsFolder: "KB", allowWrites: true });
+    const gone = new VaultStore({
+      root: path.join(root, "absent"),
+      docsFolder: "KB",
+      allowWrites: true,
+    });
     await expect(gone.readNote("KB/x.md")).rejects.toMatchObject({ code: "UNREACHABLE" });
   });
 
   it("search/list sur un vault injoignable lèvent UNREACHABLE", async () => {
-    const gone = new VaultStore({ root: path.join(root, "absent"), docsFolder: "KB", allowWrites: true });
+    const gone = new VaultStore({
+      root: path.join(root, "absent"),
+      docsFolder: "KB",
+      allowWrites: true,
+    });
     await expect(gone.listNotes({})).rejects.toMatchObject({ code: "UNREACHABLE" });
     await expect(gone.search({ query: "x" })).rejects.toMatchObject({ code: "UNREACHABLE" });
   });
@@ -129,7 +158,11 @@ describe("VaultStore — accessibilité (partage réseau)", () => {
 
 describe("VaultStore — list/search", () => {
   it("liste et recherche dans le corps et les tags", async () => {
-    await vault.writeNote({ path: "KB/imprimante.md", body: "Le toner est vide.", frontmatter: { tags: ["materiel"] } });
+    await vault.writeNote({
+      path: "KB/imprimante.md",
+      body: "Le toner est vide.",
+      frontmatter: { tags: ["materiel"] },
+    });
     await vault.writeNote({ path: "KB/vpn.md", body: "Accès distant." });
     const all = await vault.listNotes({});
     expect(all.map((n) => n.path).sort()).toEqual(["KB/imprimante.md", "KB/vpn.md"]);

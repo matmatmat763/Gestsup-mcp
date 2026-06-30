@@ -41,9 +41,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     apiKey: (env.GESTSUP_API_KEY ?? "").trim(),
     authMode: (env.GESTSUP_AUTH_MODE ?? "header").trim(),
     timeoutMs: env.GESTSUP_TIMEOUT_MS ? Number(env.GESTSUP_TIMEOUT_MS) : 15000,
-    defaultUserId: env.GESTSUP_DEFAULT_USER_ID
-      ? Number(env.GESTSUP_DEFAULT_USER_ID)
-      : undefined,
+    defaultUserId: env.GESTSUP_DEFAULT_USER_ID ? Number(env.GESTSUP_DEFAULT_USER_ID) : undefined,
     allowWrites: env.GESTSUP_ALLOW_WRITES
       ? env.GESTSUP_ALLOW_WRITES.toLowerCase() !== "false"
       : true,

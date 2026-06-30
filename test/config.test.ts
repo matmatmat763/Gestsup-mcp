@@ -20,22 +20,35 @@ describe("loadConfig", () => {
   });
 
   it("refuse INSECURE_TLS vers un hôte public", () => {
-    expect(() =>
-      loadConfig({ ...base, GESTSUP_INSECURE_TLS: "true" } as any),
-    ).toThrow(/MITM|public/i);
+    expect(() => loadConfig({ ...base, GESTSUP_INSECURE_TLS: "true" } as any)).toThrow(
+      /MITM|public/i,
+    );
   });
 
   it("autorise INSECURE_TLS vers localhost / IP privée", () => {
     expect(() =>
-      loadConfig({ GESTSUP_BASE_URL: "https://localhost", GESTSUP_API_KEY: "k", GESTSUP_INSECURE_TLS: "true" } as any),
+      loadConfig({
+        GESTSUP_BASE_URL: "https://localhost",
+        GESTSUP_API_KEY: "k",
+        GESTSUP_INSECURE_TLS: "true",
+      } as any),
     ).not.toThrow();
     expect(() =>
-      loadConfig({ GESTSUP_BASE_URL: "https://192.168.1.10", GESTSUP_API_KEY: "k", GESTSUP_INSECURE_TLS: "true" } as any),
+      loadConfig({
+        GESTSUP_BASE_URL: "https://192.168.1.10",
+        GESTSUP_API_KEY: "k",
+        GESTSUP_INSECURE_TLS: "true",
+      } as any),
     ).not.toThrow();
   });
 
   it("lit les variables Obsidian", () => {
-    const c = loadConfig({ ...base, OBSIDIAN_VAULT_PATH: "/mnt/v", OBSIDIAN_DOCS_FOLDER: "Base", OBSIDIAN_ALLOW_WRITES: "false" } as any);
+    const c = loadConfig({
+      ...base,
+      OBSIDIAN_VAULT_PATH: "/mnt/v",
+      OBSIDIAN_DOCS_FOLDER: "Base",
+      OBSIDIAN_ALLOW_WRITES: "false",
+    } as any);
     expect(c.vaultPath).toBe("/mnt/v");
     expect(c.vaultDocsFolder).toBe("Base");
     expect(c.vaultAllowWrites).toBe(false);
@@ -44,7 +57,15 @@ describe("loadConfig", () => {
 
 describe("isPrivateHost", () => {
   it("reconnaît local/privé", () => {
-    for (const h of ["localhost", "127.0.0.1", "gestsup.local", "monserveur", "10.1.2.3", "192.168.0.5", "172.16.0.1"]) {
+    for (const h of [
+      "localhost",
+      "127.0.0.1",
+      "gestsup.local",
+      "monserveur",
+      "10.1.2.3",
+      "192.168.0.5",
+      "172.16.0.1",
+    ]) {
       expect(isPrivateHost(h)).toBe(true);
     }
   });
