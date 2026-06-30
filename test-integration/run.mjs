@@ -13,8 +13,14 @@
  *   GESTSUP_INSECURE_TLS (true)  REQUESTER_EMAIL (marie@demo.local)  TECH2_ID (11)
  *   RESOLVED_STATE (3)  SMTP_FILE (/tmp/smtp_caught.txt)
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { GestsupClient } from "../dist/gestsupClient.js";
+import { VaultStore } from "../dist/vault/store.js";
+import { assessTicketQuality } from "../dist/quality.js";
+import { renderTicketNote } from "../dist/docTemplate.js";
+import { findSimilarNotes } from "../dist/similar.js";
 
 const env = process.env;
 const cfg = {
@@ -136,6 +142,35 @@ async function main() {
     check("refus clôture non conforme", false, "aurait dû échouer");
   } catch (e) {
     check("refus clôture non conforme", /non conforme|déjà résolu/i.test(e.message), e.message.slice(0, 60));
+  }
+
+  // 9) Documentation Obsidian (vault temporaire) — modules compilés sur ticket réel
+  const vaultRoot = mkdtempSync(join(tmpdir(), "gestsup-it-vault-"));
+  try {
+    const vault = new VaultStore({ root: vaultRoot, docsFolder: "KB", allowWrites: true });
+    const health = await vault.healthCheck();
+    check("vault accessible", health.ok && health.writable);
+
+    // Le ticket clôturé est riche (résolution + clôture + type) => documentable
+    const quality = assessTicketQuality(closed, 60);
+    check("évaluation qualité documentable", quality.documentable === true, `score ${quality.score}`);
+
+    // Génère l'article KB et l'écrit
+    const rendered = renderTicketNote(closed, cfg.baseUrl);
+    const notePath = `KB/${rendered.slug}.md`;
+    const w = await vault.writeNote({ path: notePath, body: rendered.body, frontmatter: rendered.frontmatter });
+    check("note KB créée", w.created === true, w.path);
+
+    // Recherche plein-texte retrouve la note
+    const hits = await vault.search({ query: "test" });
+    check("recherche dans le vault", hits.length > 0);
+
+    // Détection de doublon : le ticket est déjà documenté (frontmatter gestsup_ticket_id)
+    const notes = await vault.readMany({});
+    const sim = findSimilarNotes(closed, notes);
+    check("doublon détecté (déjà documenté)", sim.duplicate && sim.duplicate.sameTicket === true);
+  } finally {
+    rmSync(vaultRoot, { recursive: true, force: true });
   }
 
   console.log(`\n# Résultat : ${pass} PASS / ${fail} FAIL`);

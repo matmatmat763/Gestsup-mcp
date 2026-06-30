@@ -65,4 +65,10 @@ instance GestSup réelle et vérifie l'état en base (relecture) **et les mails*
 Création complète → commentaire public (**mail demandeur**) → note interne
 (**sans mail**) → affectation → mise à jour priorité → changement d'état →
 clôture conforme (**cause en fin de description**, ticket résolu) → refus de
-clôture non conforme.
+clôture non conforme → **documentation Obsidian** (vault temporaire) : qualité
+du ticket réel jugée documentable, génération + écriture de l'article KB,
+recherche plein-texte, et **détection de doublon** (ticket déjà documenté).
+
+> La section documentation exerce les modules compilés (`quality`, `docTemplate`,
+> `similar`, `vault`) sur le ticket réellement clôturé, dans un dossier temporaire
+> nettoyé en fin de run (aucune dépendance à Obsidian).
