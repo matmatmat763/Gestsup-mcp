@@ -25,7 +25,8 @@ docker compose up -d --build
 
 Au premier démarrage, MariaDB charge automatiquement :
 `00-skeleton.sql` (schéma) → `10-config.sql` (active l'API + clé) →
-`20-seed.sql` (données d'exemple).
+`20-seed.sql` (petit jeu d'exemple) → `30-gestsup-mcp.sql` (active le plugin) →
+`40-seed-bulk.sql` (**gros jeu de données réaliste**, ci-dessous).
 
 ## Accès
 
@@ -46,11 +47,26 @@ curl -k "https://localhost:8443/api/v1/ticket/type/" -H "X-API-KEY: TESTKEY_loca
 
 ## Données d'exemple
 
-- **Techniciens** : Paul (id 10), Léa (id 11) — + `admin` (id 1)
-- **Demandeurs** : Marie (id 20), Jean (id 21)
-- **8 tickets** répartis sur les techniciens, états variés (Attente/En cours/Résolu),
-  avec quelques commentaires.
+Petit jeu lisible (`20-seed.sql`) **+** gros jeu réaliste (`40-seed-bulk.sql`) :
+
+- **5 techniciens** : Paul (10), Léa (11), Lucas (12), Sophie (13), Karim (14).
+- **~200 demandeurs** (ids 1001–1200) + Marie (20), Jean (21).
+- **~5000 tickets** variés : types (Demande/Incident), états répartis
+  (Non attribué, Attente PEC, En cours, Résolu, Attente retour, Rejeté),
+  priorités, criticités, **5 lieux** (Lyon, Paris, Marseille, Lille, Toulouse),
+  **5 catégories** + sous-catégories, dates étalées sur ~1 an.
+- **Commentaires** (≈60 % des tickets) et **résolutions** sur les tickets
+  résolus/rejetés → de quoi exercer la recherche, les statistiques et la
+  documentation (qualité, doublons).
+- Référentiels ajoutés : **groupes** Support N1 / N2.
 - Mot de passe de tous les comptes de démo : `admin`.
+
+> Le gros jeu est généré côté base (moteur `SEQUENCE` de MariaDB), donc le
+> premier démarrage prend quelques secondes de plus.
+>
+> ⚠️ Les scripts d'init ne s'exécutent **que sur une base vierge**. Si tu avais
+> déjà lancé le stack avant cet ajout, repars de zéro :
+> `docker compose down -v && docker compose up -d --build`.
 
 ## Brancher le serveur MCP dessus
 
