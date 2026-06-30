@@ -10,6 +10,7 @@ GestSup** qui ajoute les endpoints manquants (recherche + écritures) et d'une
 | Élément | Description |
 |---|---|
 | **Serveur MCP** (`src/`) | Outils de gestion de tickets (lecture + écriture) à brancher sur un client MCP. |
+| [`docs/guide-demarrage.md`](docs/guide-demarrage.md) | **Guide de démarrage** : brancher GestSup + vault Obsidian (local ou serveur SMB/NFS) sur Hermes/Claude. |
 | **Plugin GestSup** ([`plugin/gestsup_mcp/`](plugin/gestsup_mcp/)) | Addon serveur (PHP) : endpoints de recherche et d'écriture, qui répliquent la logique native et réutilisent le mailer natif. |
 | [`docs/gestsup-api.md`](docs/gestsup-api.md) | Documentation de l'API REST GestSup native, reconstruite depuis le code source. |
 | [`docs/maintenance-gestsup-updates.md`](docs/maintenance-gestsup-updates.md) | **Runbook** : mettre à jour le plugin/MCP quand GestSup évolue. |
@@ -68,6 +69,14 @@ n'importe quel client MCP** (Hermes agent, Claude Desktop…). `gestsup_document
 **avertit** si le ticket est jugé pauvre (verdict + manques) mais documente
 quand même si demandé — c'est au LLM de décider. Anti path-traversal, écrasement
 jamais silencieux (mode explicite), kill-switch `OBSIDIAN_ALLOW_WRITES`.
+
+**Vault sur un serveur de fichiers (SMB/NFS…).** Comme l'accès est par fichiers,
+il suffit de **monter** le partage sur la machine du MCP et de pointer
+`OBSIDIAN_VAULT_PATH` sur le dossier monté (aucun client SMB embarqué, donc rien
+de fragile). Au démarrage, le serveur **vérifie que le vault est joignable** et
+le signale ; si le partage est démonté, les outils de doc renvoient un message
+clair (« vault injoignable — partage monté ? ») sans planter les outils GestSup.
+Procédure de montage (Linux/macOS/Windows) dans le [guide de démarrage](docs/guide-demarrage.md).
 
 **Recherche dans les deux sens.** De la doc vers la solution : `obsidian_search`
 retrouve un problème/solution déjà consigné. Du ticket vers la doc :
@@ -145,7 +154,7 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 | `GESTSUP_ALLOW_WRITES` | ❌ | `true` | `false` = lecture seule (kill-switch). |
 | `GESTSUP_INCIDENT_TYPE_IDS` | ❌ | — | Ids des types « incident » (cause obligatoire à la clôture), séparés par des virgules. À défaut, détection par le nom du type. |
 | `GESTSUP_INSECURE_TLS` | ❌ | `false` | `true` = ignore la vérification TLS (**test local uniquement**, ex. Docker auto-signé). |
-| `OBSIDIAN_VAULT_PATH` | ❌ | — | Racine du vault Obsidian. **Active** les outils de documentation si défini. |
+| `OBSIDIAN_VAULT_PATH` | ❌ | — | Racine du vault Obsidian (dossier local **ou partage réseau monté** : SMB/NFS…). **Active** les outils de documentation si défini. |
 | `OBSIDIAN_DOCS_FOLDER` | ❌ | `KB` | Sous-dossier des notes générées. |
 | `OBSIDIAN_ALLOW_WRITES` | ❌ | `true` | `false` = lecture seule du vault (kill-switch). |
 | `GESTSUP_DOC_QUALITY_THRESHOLD` | ❌ | `60` | Score minimal (0-100) pour juger un ticket « documentable ». |

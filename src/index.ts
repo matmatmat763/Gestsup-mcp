@@ -38,6 +38,10 @@ async function main(): Promise<void> {
     console.error(
       `[gestsup-mcp] Documentation Obsidian activée (vault: ${cfg.vaultPath}, dossier: ${cfg.vaultDocsFolder}/, écriture: ${cfg.vaultAllowWrites ? "oui" : "non"}).`,
     );
+    // Contrôle de santé non bloquant : avertit si le partage réseau (SMB/NFS…)
+    // n'est pas monté/joignable, sans empêcher le serveur de démarrer.
+    const health = await vault.healthCheck();
+    console.error(`[gestsup-mcp] ${health.ok ? "✅" : "⚠️ "} ${health.message}`);
   }
 
   const server = new McpServer({ name: "gestsup-mcp", version: "0.1.0" });

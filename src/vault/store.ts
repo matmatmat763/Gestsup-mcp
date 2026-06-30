@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+import { promises as fs, constants as fsConstants } from "node:fs";
 import path from "node:path";
 import {
   Frontmatter,
@@ -68,6 +68,80 @@ export class VaultStore {
     this.docsFolder = opts.docsFolder.replace(/^\/+|\/+$/g, "");
     this.allowWrites = opts.allowWrites;
     this.maxScan = opts.maxScan ?? 5000;
+  }
+
+  // ------------------------------------------------------ accessibilité
+
+  /** Code d'erreur réseau typique d'un partage (SMB/NFS) démonté/injoignable. */
+  private static readonly NETWORK_CODES = new Set([
+    "EIO", "ENOTCONN", "EHOSTDOWN", "EHOSTUNREACH", "ENETUNREACH",
+    "ETIMEDOUT", "ECONNREFUSED", "ESTALE", "EBUSY",
+  ]);
+
+  /** Transforme une erreur filesystem en message lisible (partage réseau inclus). */
+  private mapFsError(e: unknown, context: string): VaultError {
+    const code = (e as NodeJS.ErrnoException).code ?? "";
+    if (code === "ENOENT") {
+      return new VaultError(
+        `Vault introuvable (« ${this.root} ») — le partage réseau est-il monté ? [${context}]`,
+        "UNREACHABLE",
+      );
+    }
+    if (code === "ENOTDIR") {
+      return new VaultError(`Le chemin du vault n'est pas un dossier (« ${this.root} »). [${context}]`, "BAD_ROOT");
+    }
+    if (code === "EACCES" || code === "EPERM") {
+      return new VaultError(`Accès refusé au vault (« ${this.root} ») — vérifiez les droits du montage. [${context}]`, "ACCESS");
+    }
+    if (VaultStore.NETWORK_CODES.has(code)) {
+      return new VaultError(
+        `Vault injoignable (« ${this.root} », ${code}) — le serveur de fichiers/partage répond-il ? [${context}]`,
+        "UNREACHABLE",
+      );
+    }
+    return new VaultError(`Erreur d'accès au vault (${code || "inconnue"}) : ${(e as Error).message}. [${context}]`);
+  }
+
+  /** Vérifie que la racine du vault est joignable (et un dossier). */
+  private async ensureReachable(context: string): Promise<void> {
+    try {
+      const st = await fs.stat(this.root);
+      if (!st.isDirectory()) {
+        throw new VaultError(`Le chemin du vault n'est pas un dossier (« ${this.root} »). [${context}]`, "BAD_ROOT");
+      }
+    } catch (e) {
+      if (e instanceof VaultError) throw e;
+      throw this.mapFsError(e, context);
+    }
+  }
+
+  /**
+   * Contrôle de santé au démarrage : le vault est-il accessible (et écrivable
+   * si les écritures sont activées) ? Renvoie un diagnostic au lieu de lever,
+   * pour permettre au serveur de démarrer même si le partage est momentanément
+   * indisponible.
+   */
+  async healthCheck(): Promise<{ ok: boolean; writable: boolean; message: string }> {
+    try {
+      await this.ensureReachable("healthCheck");
+    } catch (e) {
+      return { ok: false, writable: false, message: (e as VaultError).message };
+    }
+    let writable = false;
+    if (this.allowWrites) {
+      try {
+        await fs.access(this.root, fsConstants.W_OK);
+        writable = true;
+      } catch {
+        writable = false;
+      }
+    }
+    const message = this.allowWrites
+      ? writable
+        ? `Vault accessible et écrivable (« ${this.root} »).`
+        : `Vault accessible mais NON écrivable (« ${this.root} ») — vérifiez les droits du montage.`
+      : `Vault accessible en lecture seule (« ${this.root} »).`;
+    return { ok: true, writable, message };
   }
 
   // --------------------------------------------------------------- chemins
@@ -141,13 +215,19 @@ export class VaultStore {
     const out: string[] = [];
     const start = this.resolveDir(subdir);
     const stack: string[] = [start];
+    let first = true;
     while (stack.length > 0 && out.length < this.maxScan) {
       const dir = stack.pop() as string;
       let entries: import("node:fs").Dirent[];
       try {
         entries = await fs.readdir(dir, { withFileTypes: true });
-      } catch {
+      } catch (e) {
+        // Échec sur le dossier de départ = vault/partage injoignable : on
+        // remonte une erreur claire. Sur un sous-dossier, on tolère et continue.
+        if (first) throw this.mapFsError(e, "walk");
         continue;
+      } finally {
+        first = false;
       }
       for (const e of entries) {
         if (out.length >= this.maxScan) break;
@@ -197,6 +277,9 @@ export class VaultStore {
 
   async readNote(notePath: string): Promise<NoteContent> {
     const { abs, rel } = this.resolveInside(notePath);
+    // Le vault doit être joignable : ainsi un ENOENT ci-dessous signifie bien
+    // « note absente » et non « partage démonté ».
+    await this.ensureReachable("readNote");
     try {
       const raw = await fs.readFile(abs, "utf8");
       const { frontmatter, body } = parseNote(raw);
@@ -205,7 +288,7 @@ export class VaultStore {
       if ((e as NodeJS.ErrnoException).code === "ENOENT") {
         return { path: rel, title: rel.split("/").pop()!.replace(/\.md$/i, ""), exists: false, frontmatter: {}, body: "" };
       }
-      throw new VaultError(`Lecture impossible : ${(e as Error).message}`);
+      throw this.mapFsError(e, "readNote");
     }
   }
 
@@ -244,6 +327,7 @@ export class VaultStore {
   }): Promise<{ path: string; created: boolean }> {
     this.assertWritable();
     const { abs, rel } = this.resolveInside(opts.path);
+    await this.ensureReachable("writeNote");
     const mode: WriteMode = opts.mode ?? "create";
     const existed = await fileExists(abs);
     if (existed && mode === "create") {
@@ -256,8 +340,12 @@ export class VaultStore {
     const fm: Frontmatter = { ...(opts.frontmatter ?? {}) };
     if (!existed && fm.created === undefined) fm.created = now;
     fm.updated = now;
-    await fs.mkdir(path.dirname(abs), { recursive: true });
-    await fs.writeFile(abs, stringifyNote(fm, opts.body), "utf8");
+    try {
+      await fs.mkdir(path.dirname(abs), { recursive: true });
+      await fs.writeFile(abs, stringifyNote(fm, opts.body), "utf8");
+    } catch (e) {
+      throw this.mapFsError(e, "writeNote");
+    }
     return { path: rel, created: !existed };
   }
 

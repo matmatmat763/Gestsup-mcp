@@ -101,6 +101,32 @@ describe("VaultStore — appendSection", () => {
   });
 });
 
+describe("VaultStore — accessibilité (partage réseau)", () => {
+  it("healthCheck OK sur un vault existant et écrivable", async () => {
+    const h = await vault.healthCheck();
+    expect(h.ok).toBe(true);
+    expect(h.writable).toBe(true);
+  });
+
+  it("healthCheck signale un vault introuvable (partage démonté)", async () => {
+    const gone = new VaultStore({ root: path.join(root, "absent"), docsFolder: "KB", allowWrites: true });
+    const h = await gone.healthCheck();
+    expect(h.ok).toBe(false);
+    expect(h.message.toLowerCase()).toContain("mont");
+  });
+
+  it("readNote sur un vault injoignable lève UNREACHABLE", async () => {
+    const gone = new VaultStore({ root: path.join(root, "absent"), docsFolder: "KB", allowWrites: true });
+    await expect(gone.readNote("KB/x.md")).rejects.toMatchObject({ code: "UNREACHABLE" });
+  });
+
+  it("search/list sur un vault injoignable lèvent UNREACHABLE", async () => {
+    const gone = new VaultStore({ root: path.join(root, "absent"), docsFolder: "KB", allowWrites: true });
+    await expect(gone.listNotes({})).rejects.toMatchObject({ code: "UNREACHABLE" });
+    await expect(gone.search({ query: "x" })).rejects.toMatchObject({ code: "UNREACHABLE" });
+  });
+});
+
 describe("VaultStore — list/search", () => {
   it("liste et recherche dans le corps et les tags", async () => {
     await vault.writeNote({ path: "KB/imprimante.md", body: "Le toner est vide.", frontmatter: { tags: ["materiel"] } });
