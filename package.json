@@ -1,6 +1,6 @@
 {
   "name": "gestsup-mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Serveur MCP pour gérer les tickets GestSup via son API REST",
   "type": "module",
   "bin": {

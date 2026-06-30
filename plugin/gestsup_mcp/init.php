@@ -5,7 +5,7 @@
 #                Reproduit la sécurité de api/v1/init.php (clé API, IP, HTTPS)
 #                et vérifie en plus que le plugin est activé.
 # @Author : gestsup-mcp
-# @Version : 0.1
+# @Version : 1.0
 ################################################################################
 
 header('Content-Type: application/json; charset=utf-8');

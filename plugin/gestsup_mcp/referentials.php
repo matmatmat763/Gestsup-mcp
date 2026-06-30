@@ -7,7 +7,7 @@
 # @Method : GET ; param `kind` = state | priority | criticality | cause
 # @Auth : clé API GestSup (voir init.php)
 # @Author : gestsup-mcp
-# @Version : 0.1
+# @Version : 1.0
 ################################################################################
 
 require(__DIR__ . '/init.php');

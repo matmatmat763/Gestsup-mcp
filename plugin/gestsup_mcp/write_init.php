@@ -6,7 +6,7 @@
 #                attendu par la logique native de GestSup (session, paramètres),
 #                pour pouvoir réutiliser core/auto_mail.php à l'identique.
 # @Author : gestsup-mcp
-# @Version : 0.1
+# @Version : 1.0
 ################################################################################
 
 // Authentification + $db + fonctions + plugin actif (mêmes contrôles que la lecture)

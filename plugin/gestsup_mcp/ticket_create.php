@@ -8,7 +8,7 @@
 #                Toutes les valeurs de liste sont validées contre l'instance.
 # @Method : POST
 # @Author : gestsup-mcp
-# @Version : 0.1
+# @Version : 1.0
 ################################################################################
 
 require(__DIR__ . '/write_init.php');

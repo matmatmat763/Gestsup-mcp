@@ -44,7 +44,7 @@ async function main(): Promise<void> {
     console.error(`[gestsup-mcp] ${health.ok ? "✅" : "⚠️ "} ${health.message}`);
   }
 
-  const server = new McpServer({ name: "gestsup-mcp", version: "0.1.0" });
+  const server = new McpServer({ name: "gestsup-mcp", version: "1.0.0" });
   registerTools(server, client, cfg, vault);
 
   const transport = new StdioServerTransport();

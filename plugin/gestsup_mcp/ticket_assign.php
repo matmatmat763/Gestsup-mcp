@@ -9,7 +9,7 @@
 #                Technicien/groupe = ids de l'instance (jamais codés en dur).
 # @Method : POST
 # @Author : gestsup-mcp
-# @Version : 0.1
+# @Version : 1.0
 ################################################################################
 
 require(__DIR__ . '/write_init.php');

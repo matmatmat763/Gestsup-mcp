@@ -10,7 +10,7 @@
 #                (commentaire + thread type 4 + date_res) puis notifie.
 # @Method : POST
 # @Author : gestsup-mcp
-# @Version : 0.2
+# @Version : 1.0
 ################################################################################
 
 require(__DIR__ . '/write_init.php');
