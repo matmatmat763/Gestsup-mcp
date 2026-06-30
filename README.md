@@ -47,6 +47,27 @@ son mailer** : les notifications partent exactement selon tes paramètres
 priorités, catégories, techniciens, procédures…) sont **lus de ton instance** et
 validés. L'identité de l'acteur = `GESTSUP_DEFAULT_USER_ID`.
 
+### Documentation (Obsidian)
+
+📓 = activé uniquement si un vault est configuré (`OBSIDIAN_VAULT_PATH`).
+
+| Outil | Rôle | |
+|---|---|---|
+| `gestsup_assess_ticket_quality` | Évaluer si un ticket est **riche et propre** (score, signaux, manques) avant de le capitaliser | natif |
+| `obsidian_list_notes` | Lister les notes du vault (filtre dossier / nom) | 📓 |
+| `obsidian_search` | Recherche plein-texte (titre, tags, corps) | 📓 |
+| `obsidian_read_note` | Lire une note (frontmatter + corps) | 📓 |
+| `obsidian_write_note` | Créer / remplacer une note (idéal : doc issue d'une conversation) | 📓 |
+| `obsidian_append_section` | Ajouter / remplacer une section `## …` (enrichir la doc au fil du temps) | 📓 |
+| `gestsup_document_ticket` | Générer un **article KB** depuis un ticket (Problème / Contexte / Résolution / Liens) | 📓 |
+
+L'accès au vault est **par fichiers** (lecture/écriture directe des `.md`) :
+aucune dépendance à l'app Obsidian ni à un plugin tiers, donc **compatible avec
+n'importe quel client MCP** (Hermes agent, Claude Desktop…). `gestsup_document_ticket`
+**avertit** si le ticket est jugé pauvre (verdict + manques) mais documente
+quand même si demandé — c'est au LLM de décider. Anti path-traversal, écrasement
+jamais silencieux (mode explicite), kill-switch `OBSIDIAN_ALLOW_WRITES`.
+
 ## Scénarios d'assistant (exemples)
 
 Une fois branché, tu pilotes GestSup en langage naturel ; l'assistant combine les
@@ -61,6 +82,23 @@ outils :
 - **« Point infra » d'équipe** : `gestsup_search_tickets` filtré par technicien(s)/groupe.
 - **Agir** : commenter, noter en interne, changer l'état/résoudre, affecter,
   mettre à jour (catégorie/priorité/temps), clôturer (conforme), créer un ticket.
+- **Capitaliser depuis un ticket** : *« Le ticket 1234 mérite-t-il d'être documenté ? »*
+  → `gestsup_assess_ticket_quality` ; si oui, *« Documente-le »* → `gestsup_document_ticket`
+  (article KB dans le vault). L'outil **prévient** si le ticket est trop pauvre.
+- **Documenter une conversation** : *« Note dans la doc la procédure d'accès VPN »*
+  → `obsidian_write_note` / `obsidian_append_section` (sans ticket source).
+- **Enrichir au fil du temps** : *« Ajoute à la note imprimante le cas du toner Lyon »*
+  → `obsidian_append_section(path, heading, content)`.
+
+## Compatibilité clients MCP (Hermes, etc.)
+
+Les outils de documentation sont conçus pour fonctionner avec **n'importe quel
+client MCP**, Hermes agent en cible : transport **stdio** standard, schémas
+d'outils classiques, résultats **texte + JSON** (pas de dépendance aux
+fonctionnalités MCP optionnelles `resources`/`prompts`/`sampling` que certains
+clients ne gèrent pas). L'accès au vault se fait **par fichiers**, sans exiger
+qu'Obsidian soit lancé : il suffit que le serveur MCP ait accès au dossier du
+vault.
 
 ## Pré-requis côté GestSup
 
@@ -92,6 +130,10 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 | `GESTSUP_ALLOW_WRITES` | ❌ | `true` | `false` = lecture seule (kill-switch). |
 | `GESTSUP_INCIDENT_TYPE_IDS` | ❌ | — | Ids des types « incident » (cause obligatoire à la clôture), séparés par des virgules. À défaut, détection par le nom du type. |
 | `GESTSUP_INSECURE_TLS` | ❌ | `false` | `true` = ignore la vérification TLS (**test local uniquement**, ex. Docker auto-signé). |
+| `OBSIDIAN_VAULT_PATH` | ❌ | — | Racine du vault Obsidian. **Active** les outils de documentation si défini. |
+| `OBSIDIAN_DOCS_FOLDER` | ❌ | `KB` | Sous-dossier des notes générées. |
+| `OBSIDIAN_ALLOW_WRITES` | ❌ | `true` | `false` = lecture seule du vault (kill-switch). |
+| `GESTSUP_DOC_QUALITY_THRESHOLD` | ❌ | `60` | Score minimal (0-100) pour juger un ticket « documentable ». |
 
 ## Brancher sur Claude Desktop
 
