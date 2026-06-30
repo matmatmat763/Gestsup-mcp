@@ -69,6 +69,28 @@ if ($state !== null) {
 $date_hope = (!empty($_POST['date_hope']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['date_hope']))
     ? $_POST['date_hope'] : '0000-00-00';
 
+// --- Champs obligatoires : on REPRODUIT les obligations définies dans GestSup
+// (droits ticket_*_mandatory du profil du technicien), comme le contrôleur natif.
+$qry = $db->prepare("SELECT * FROM `trights` WHERE `profile`=:p");
+$qry->execute(array('p' => $author['profile']));
+$rright = $qry->fetch();
+$qry->closeCursor();
+if ($rright) {
+    $req = function ($k) use ($rright) { return !empty($rright[$k]); };
+    $missing = array();
+    if ($req('ticket_title_mandatory') && $title === '') { $missing[] = 'title'; }
+    if ($req('ticket_description_mandatory') && $description === '') { $missing[] = 'description'; }
+    if ($req('ticket_type_mandatory') && $rparameters['ticket_type'] && !$type) { $missing[] = 'type'; }
+    if ($req('ticket_cat_mandatory') && (!$category || !$subcat)) { $missing[] = 'category+subcat'; }
+    if ($req('ticket_priority_mandatory') && !$priority) { $missing[] = 'priority'; }
+    if ($req('ticket_criticality_mandatory') && !$criticality) { $missing[] = 'criticality'; }
+    if ($req('ticket_place_mandatory') && $rparameters['ticket_places'] && !$place) { $missing[] = 'place'; }
+    if ($req('ticket_user_mandatory') && !$user) { $missing[] = 'requester'; }
+    if ($missing) {
+        mcp_deny('Champs obligatoires manquants (selon la configuration GestSup) : ' . implode(', ', $missing) . '.', '400 Bad Request');
+    }
+}
+
 $title_secure       = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
 $description_secure = htmlspecialchars($description, ENT_QUOTES, 'UTF-8');
 $datetime = date('Y-m-d H:i:s');

@@ -68,7 +68,10 @@ export function registerTools(server: McpServer, client: GestsupClient, cfg: Con
     {
       title: "Créer un ticket (complet)",
       description:
-        "Crée un ticket en renseignant demandeur, catégorie, sous-catégorie, priorité, criticité, type, titre, description, temps passé/prévu, technicien/groupe. Les valeurs de liste sont des IDs À RÉCUPÉRER via gestsup_list_referential (jamais devinés). Le demandeur est donné par requester_id OU requester_email. Notifie selon les paramètres GestSup. Nécessite le plugin « gestsup_mcp ».",
+        "Crée un ticket complet (demandeur, catégorie, sous-catégorie, priorité, criticité, type, titre, description, temps, technicien/groupe, lieu). " +
+        "RECOMMANDÉ quand on part d'un email/d'une demande : 1) appeler gestsup_list_referential (type, category, subcat, priority, place…) pour connaître les valeurs RÉELLES de l'instance ; 2) DÉDUIRE du contenu les meilleurs ids (type incident/demande, catégorie, priorité, lieu/site) ; 3) confirmer avec l'utilisateur ; 4) créer. " +
+        "Les valeurs de liste sont des IDs (jamais devinés/inventés). Le demandeur est donné par requester_id OU requester_email. " +
+        "La création peut être REFUSÉE si des champs obligatoires définis dans GestSup manquent (le message indique lesquels). Notifie selon les paramètres GestSup. Nécessite le plugin « gestsup_mcp ».",
       inputSchema: {
         title: z.string().min(1).describe("Titre du ticket."),
         description: z.string().min(1).describe("Description."),

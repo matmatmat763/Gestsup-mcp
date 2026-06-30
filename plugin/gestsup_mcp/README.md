@@ -233,6 +233,12 @@ contenant « incident ». Override possible par `require_cause` (0/1).
 Création complète d'un ticket (réplique l'INSERT natif + notification « nouveau
 ticket »). Le demandeur est donné par `requester_id` **ou** `requester_email`.
 
+> **Champs obligatoires** : la création **reproduit les obligations définies dans
+> GestSup** (droits `ticket_*_mandatory` du profil du technicien : titre,
+> description, type, catégorie+sous-cat, priorité, criticité, lieu, demandeur).
+> Si un champ obligatoire manque, la création est **refusée (400)** avec la liste
+> des champs manquants. Rien n'est codé en dur : tout vient de la config GestSup.
+
 | Param | Requis | Description |
 |---|---|---|
 | `author_id` | ✅ | Créateur (technicien) |
