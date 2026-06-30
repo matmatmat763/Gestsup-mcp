@@ -36,6 +36,15 @@ function mcp_ok($data) {
     exit;
 }
 
+/**
+ * Erreur base de données : journalise le détail (LogIt) mais ne renvoie au
+ * client qu'un message générique (pas de fuite de schéma/SQL).
+ */
+function mcp_db_error($e) {
+    LogIt('API_error', 'gestsup_mcp DB error : ' . $e->getMessage(), 0);
+    mcp_deny('Erreur interne lors de l\'écriture en base.', '500 Internal Server Error');
+}
+
 // --- Identité de l'acteur (technicien) : author_id = GESTSUP_DEFAULT_USER_ID côté MCP
 $author_id = mcp_post_int('author_id');
 if (!$author_id) {
@@ -47,6 +56,17 @@ $author = $qry->fetch();
 $qry->closeCursor();
 if (!$author) {
     mcp_deny('author_id introuvable ou désactivé.', '400 Bad Request');
+}
+
+// --- Défense en profondeur : l'auteur DOIT être un technicien -----------------
+// On n'attribue jamais une écriture à un utilisateur sans le droit `ticket_tech`
+// (sinon, avec la clé API, on pourrait agir au nom de n'importe quel compte).
+$qry = $db->prepare("SELECT `ticket_tech` FROM `trights` WHERE `profile`=:p");
+$qry->execute(array('p' => $author['profile']));
+$right = $qry->fetch();
+$qry->closeCursor();
+if (empty($right) || (int) $right['ticket_tech'] === 0) {
+    mcp_deny("author_id=$author_id n'a pas le droit technicien (ticket_tech) : écriture refusée.", '403 Forbidden');
 }
 
 // --- Paramètres complets (auto_mail.php en a besoin)

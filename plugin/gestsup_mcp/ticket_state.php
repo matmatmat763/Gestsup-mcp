@@ -90,7 +90,7 @@ try {
     $db->commit();
 } catch (\Throwable $e) {
     if ($db->inTransaction()) { $db->rollBack(); }
-    mcp_deny('Erreur base de données : ' . $e->getMessage(), '500 Internal Server Error');
+    mcp_db_error($e);
 }
 
 // --- Notification native (modify/close selon l'état, géré par auto_mail.php)

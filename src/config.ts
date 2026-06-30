@@ -72,5 +72,27 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     );
   }
 
+  // Garde-fou : ne JAMAIS désactiver la vérification TLS vers un hôte public
+  // (risque de MITM). Réservé au test local (localhost / IP privée / *.local).
+  if (cfg.insecureTls && !isPrivateHost(new URL(cfg.baseUrl).hostname)) {
+    throw new Error(
+      "GESTSUP_INSECURE_TLS=true est refusé pour un hôte public (risque MITM). " +
+        "Réservé à localhost / réseau privé / .local (ex. Docker auto-signé).",
+    );
+  }
+
   return cfg;
+}
+
+/** Hôte « local/privé » : localhost, .local, ou plage IP privée (RFC 1918). */
+export function isPrivateHost(host: string): boolean {
+  const h = host.toLowerCase();
+  if (h === "localhost" || h === "127.0.0.1" || h === "::1") return true;
+  if (h.endsWith(".local") || h.endsWith(".localhost")) return true;
+  if (!h.includes(".")) return true; // nom d'hôte court (réseau interne)
+  // IPv4 privées : 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  return false;
 }

@@ -72,7 +72,10 @@ if (!$parameters['api_key']) {
 if ($parameters['api_client_ip']) {
     $valid_ip = 0;
     foreach (explode(',', $parameters['api_client_ip']) as $ip) {
-        if ($ip !== '' && preg_match('/' . $ip . '/', $_SERVER['REMOTE_ADDR'])) {
+        $ip = trim($ip);
+        // Ancrage strict (^...$) : une entrée « 10.0.0.1 » ne doit PAS matcher
+        // « 110.0.0.12 » (l'API native, non ancrée, le permettait par erreur).
+        if ($ip !== '' && preg_match('/^(' . $ip . ')$/', $_SERVER['REMOTE_ADDR'])) {
             $valid_ip = 1;
         }
     }
