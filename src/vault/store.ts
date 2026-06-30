@@ -177,6 +177,24 @@ export class VaultStore {
     return refs;
   }
 
+  /** Lit en lot le contenu des notes (borné par maxScan) — pour la similarité. */
+  async readMany(opts: { folder?: string; limit?: number } = {}): Promise<NoteContent[]> {
+    const all = await this.walk(opts.folder ?? "");
+    const limit = Math.min(Math.max(opts.limit ?? 500, 1), this.maxScan);
+    const out: NoteContent[] = [];
+    for (const rel of all) {
+      if (out.length >= limit) break;
+      try {
+        const raw = await fs.readFile(path.resolve(this.root, rel), "utf8");
+        const { frontmatter, body } = parseNote(raw);
+        out.push({ path: rel, title: this.titleOf(frontmatter, rel), exists: true, frontmatter, body });
+      } catch {
+        // note illisible : ignorée
+      }
+    }
+    return out;
+  }
+
   async readNote(notePath: string): Promise<NoteContent> {
     const { abs, rel } = this.resolveInside(notePath);
     try {

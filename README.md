@@ -54,8 +54,9 @@ validés. L'identité de l'acteur = `GESTSUP_DEFAULT_USER_ID`.
 | Outil | Rôle | |
 |---|---|---|
 | `gestsup_assess_ticket_quality` | Évaluer si un ticket est **riche et propre** (score, signaux, manques) avant de le capitaliser | natif |
+| `gestsup_suggest_documentation` | **Proposer** de documenter un ticket en fin de traitement, **sauf** si un cas similaire couvrant la même résolution existe déjà | 📓 |
 | `obsidian_list_notes` | Lister les notes du vault (filtre dossier / nom) | 📓 |
-| `obsidian_search` | Recherche plein-texte (titre, tags, corps) | 📓 |
+| `obsidian_search` | Chercher dans la doc (titre, tags, corps) — *« a-t-on déjà eu ce problème ? »* | 📓 |
 | `obsidian_read_note` | Lire une note (frontmatter + corps) | 📓 |
 | `obsidian_write_note` | Créer / remplacer une note (idéal : doc issue d'une conversation) | 📓 |
 | `obsidian_append_section` | Ajouter / remplacer une section `## …` (enrichir la doc au fil du temps) | 📓 |
@@ -67,6 +68,14 @@ n'importe quel client MCP** (Hermes agent, Claude Desktop…). `gestsup_document
 **avertit** si le ticket est jugé pauvre (verdict + manques) mais documente
 quand même si demandé — c'est au LLM de décider. Anti path-traversal, écrasement
 jamais silencieux (mode explicite), kill-switch `OBSIDIAN_ALLOW_WRITES`.
+
+**Recherche dans les deux sens.** De la doc vers la solution : `obsidian_search`
+retrouve un problème/solution déjà consigné. Du ticket vers la doc :
+`gestsup_suggest_documentation` (et la réponse de `gestsup_close_ticket` quand un
+vault est configuré) **propose de documenter en fin de ticket**, mais détecte
+d'abord si un **cas similaire avec la même résolution** est déjà en doc — auquel
+cas il invite à ne pas créer de doublon (ou à compléter la note existante). La
+détection de similarité est lexicale, déterministe et explicable ; le LLM tranche.
 
 ## Scénarios d'assistant (exemples)
 
@@ -82,9 +91,15 @@ outils :
 - **« Point infra » d'équipe** : `gestsup_search_tickets` filtré par technicien(s)/groupe.
 - **Agir** : commenter, noter en interne, changer l'état/résoudre, affecter,
   mettre à jour (catégorie/priorité/temps), clôturer (conforme), créer un ticket.
+- **Chercher une solution dans la doc** : *« A-t-on déjà eu ce souci d'imprimante ? »*
+  → `obsidian_search` (puis `obsidian_read_note` pour la fiche complète).
 - **Capitaliser depuis un ticket** : *« Le ticket 1234 mérite-t-il d'être documenté ? »*
   → `gestsup_assess_ticket_quality` ; si oui, *« Documente-le »* → `gestsup_document_ticket`
   (article KB dans le vault). L'outil **prévient** si le ticket est trop pauvre.
+- **Proposition en fin de ticket (anti-doublon)** : après une clôture,
+  `gestsup_suggest_documentation` (ou directement la réponse de `gestsup_close_ticket`)
+  propose de documenter — *sauf* si un cas similaire avec la même résolution est
+  déjà en doc, où il invite à compléter la note existante plutôt qu'à en créer une.
 - **Documenter une conversation** : *« Note dans la doc la procédure d'accès VPN »*
   → `obsidian_write_note` / `obsidian_append_section` (sans ticket source).
 - **Enrichir au fil du temps** : *« Ajoute à la note imprimante le cas du toner Lyon »*

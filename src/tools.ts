@@ -4,8 +4,58 @@ import type { Config } from "./config.js";
 import { GestsupError } from "./errors.js";
 import type { GestsupClient, ReferentialKind } from "./gestsupClient.js";
 import { VaultError, type VaultStore } from "./vault/store.js";
-import { assessTicketQuality } from "./quality.js";
+import { assessTicketQuality, type QualityReport } from "./quality.js";
 import { renderTicketNote } from "./docTemplate.js";
+import { findSimilarNotes, type SimilarNote } from "./similar.js";
+
+interface DocSuggestion {
+  ticket_id: string;
+  recommendation: "document" | "skip_similar" | "already_documented" | "insufficient";
+  message: string;
+  quality: QualityReport;
+  similar: SimilarNote[];
+  duplicate?: SimilarNote;
+}
+
+/**
+ * Construit une recommandation de documentation pour un ticket : évalue sa
+ * richesse ET cherche dans le vault un cas similaire couvrant la même
+ * résolution. Sert à proposer de documenter en fin de ticket… sauf doublon.
+ */
+async function buildDocSuggestion(
+  client: GestsupClient,
+  vault: VaultStore,
+  cfg: Config,
+  ticketId: number,
+): Promise<DocSuggestion> {
+  const t = await client.getTicket(ticketId);
+  const quality = assessTicketQuality(t, cfg.docQualityThreshold);
+  const notes = await vault.readMany({ limit: 800 });
+  const sim = findSimilarNotes(t, notes);
+
+  let recommendation: DocSuggestion["recommendation"];
+  let message: string;
+  if (sim.duplicate?.sameTicket) {
+    recommendation = "already_documented";
+    message = `Ce ticket est déjà documenté : « ${sim.duplicate.path} ».`;
+  } else if (sim.duplicate) {
+    const rel = Math.round(sim.duplicate.relevance * 100);
+    const res = Math.round(sim.duplicate.resolutionOverlap * 100);
+    recommendation = "skip_similar";
+    message =
+      `Un cas similaire avec la même résolution existe déjà : « ${sim.duplicate.path} » ` +
+      `(pertinence ${rel} %, résolution ${res} %). Documentation non nécessaire — ou complète cette note avec une nuance.`;
+  } else if (!quality.documentable) {
+    recommendation = "insufficient";
+    message = `Ticket trop pauvre pour être documenté (score ${quality.score}/100). Manques : ${quality.missing.join(" ; ") || "—"}.`;
+  } else {
+    recommendation = "document";
+    message =
+      "Aucun cas similaire trouvé dans la doc : bon candidat à documenter. " +
+      "Propose à l'utilisateur d'enregistrer ce ticket avec gestsup_document_ticket.";
+  }
+  return { ticket_id: t.ticket_id, recommendation, message, quality, similar: sim.candidates, duplicate: sim.duplicate };
+}
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -315,7 +365,20 @@ export function registerTools(
           : r.cause_required
             ? "cause requise"
             : "sans cause";
-        return ok(`Ticket ${args.ticket_id} clôturé (type ${r.ticket_type}, ${causeMsg}, mail: ${r.mail}).`, r);
+        let text = `Ticket ${args.ticket_id} clôturé (type ${r.ticket_type}, ${causeMsg}, mail: ${r.mail}).`;
+        const data: Record<string, unknown> = { ...r };
+        // En fin de ticket, proposer la documentation — sauf cas similaire déjà
+        // en doc (best-effort : n'échoue jamais la clôture si le vault déraille).
+        if (vault) {
+          try {
+            const suggestion = await buildDocSuggestion(client, vault, cfg, args.ticket_id);
+            data.documentation_suggestion = suggestion;
+            text += `\n📓 ${suggestion.message}`;
+          } catch (e) {
+            data.documentation_suggestion = { error: (e as Error).message };
+          }
+        }
+        return ok(text, data);
       } catch (e) {
         return fail(e);
       }
@@ -817,6 +880,29 @@ function registerVaultTools(
           `${warn}Ticket ${t.ticket_id} documenté dans « ${r.path} » (${r.created ? "créée" : "mise à jour"}).`,
           { written: true, ...r, quality: report },
         );
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  // ----------------------- proposer de documenter (avec anti-doublon)
+  server.registerTool(
+    "gestsup_suggest_documentation",
+    {
+      title: "Proposer de documenter un ticket",
+      description:
+        "À utiliser EN FIN DE TICKET (résolu/clôturé) : évalue la richesse du ticket ET cherche dans le vault un cas SIMILAIRE couvrant la MÊME RÉSOLUTION. " +
+        "Renvoie une recommandation : « document » (bon candidat, aucun doublon), « skip_similar » (cas similaire déjà en doc — inutile de redocumenter, éventuellement compléter), « already_documented » (ce ticket est déjà documenté), « insufficient » (trop pauvre). " +
+        "Lecture seule : ne crée rien. Sers-t'en pour PROPOSER, puis appelle gestsup_document_ticket si l'utilisateur accepte.",
+      inputSchema: {
+        ticket_id: z.number().int().positive().describe("Numéro du ticket (résolu de préférence)."),
+      },
+    },
+    async (args): Promise<ToolResult> => {
+      try {
+        const suggestion = await buildDocSuggestion(client, vault, cfg, args.ticket_id);
+        return ok(suggestion.message, suggestion);
       } catch (e) {
         return fail(e);
       }
