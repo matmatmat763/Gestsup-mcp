@@ -488,6 +488,11 @@ Référence rapide des colonnes utiles (schéma `_SQL/skeleton.sql`) :
 
 ## 10. Limites connues de l'API 3.2.55
 
+> Ce document décrit l'**API REST native**. Le **plugin `gestsup_mcp`** de ce
+> dépôt lève plusieurs de ces limites (recherche par technicien, changement
+> d'état, affectation, mise à jour de champs, clôture, création complète) en
+> répliquant la logique native — voir [`../plugin/gestsup_mcp/README.md`](../plugin/gestsup_mcp/README.md).
+
 - **Lecture surtout** : création de ticket + ajout de commentaire ; pas de
   mise à jour d'état, d'affectation technicien, de clôture, ni de gestion des
   équipements (assets), des projets, du calendrier, etc.
