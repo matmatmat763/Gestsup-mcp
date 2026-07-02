@@ -88,9 +88,11 @@ if (empty($api_key)) {
     mcp_deny('Missing API key parameter');
 }
 
-// Comparaison clé (avec tolérance de préfixe, comme l'API native)
-if ($parameters['api_key'] != $api_key) {
-    if ($parameters['api_key'] != substr($api_key, 1)) {
+// Comparaison clé (avec tolérance de préfixe, comme l'API native).
+// hash_equals : temps constant et comparaison strictement binaire (pas de
+// juggling numérique PHP sur des clés de la forme "0e123...").
+if (!hash_equals((string) $parameters['api_key'], (string) $api_key)) {
+    if (!hash_equals((string) $parameters['api_key'], (string) substr($api_key, 1))) {
         mcp_deny('Wrong API Key');
     }
 }

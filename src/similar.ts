@@ -17,8 +17,6 @@ const STOPWORDS = new Set([
   "les",
   "des",
   "une",
-  "uns",
-  " une",
   "que",
   "qui",
   "quoi",

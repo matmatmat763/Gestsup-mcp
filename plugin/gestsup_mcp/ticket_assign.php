@@ -34,6 +34,11 @@ if ($technician_id) {
     $q = $db->prepare("SELECT `id` FROM `tusers` WHERE `id`=:id AND `disable`=0");
     $q->execute(array('id' => $technician_id)); $ok = $q->fetch(); $q->closeCursor();
     if (!$ok) { mcp_deny("technician_id $technician_id inconnu.", '400 Bad Request'); }
+    // La cible doit être un vrai technicien (droit ticket_tech), comme dans l'UI
+    // native où la liste déroulante ne propose que des techniciens.
+    if (!mcp_is_technician($db, $technician_id)) {
+        mcp_deny("technician_id=$technician_id n'a pas le droit technicien (ticket_tech).", '400 Bad Request');
+    }
 }
 if ($group_id) {
     $q = $db->prepare("SELECT `id` FROM `tgroups` WHERE `id`=:id AND `disable`=0");

@@ -260,8 +260,14 @@ ticket »). Le demandeur est donné par `requester_id` **ou** `requester_email`.
 - Les écritures sont **transactionnelles** et **répliquent la logique native**
   de GestSup (historique `tthreads`, dates, état) ; les notifications réutilisent
   le **mailer natif** (`core/auto_mail.php`) selon les paramètres `mail_auto_*`.
-- Aucune valeur de liste n'est codée en dur : tout id est **validé contre
-  l'instance** (référentiels).
+- Aucune valeur de référentiel métier n'est codée en dur : tout id est **validé
+  contre l'instance** (référentiels). Seules les **conventions d'état internes
+  du cœur GestSup** (id 3 = « résolu », 5 = « non attribué », 1 = « attente
+  PEC ») sont répliquées telles quelles, car `core/ticket.php` les code lui-même
+  en dur.
+- La sécurité de l'API native est **durcie** au passage : comparaison de clé en
+  temps constant (`hash_equals`), liste blanche d'IP ancrée (`^…$`), jokers
+  LIKE (`%`, `_`) échappés dans la recherche par mots-clés.
 
 ## Désinstallation
 

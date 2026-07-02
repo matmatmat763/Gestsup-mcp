@@ -37,7 +37,15 @@ $subcat      = mcp_post_int('subcat');       if ($subcat !== null)      { mcp_ch
 $priority    = mcp_post_int('priority');     if ($priority !== null)    { mcp_check_ref($db, 'tpriority', $priority, 'priority'); } else { $priority = 0; }
 $criticality = mcp_post_int('criticality');  if ($criticality !== null) { mcp_check_ref($db, 'tcriticality', $criticality, 'criticality'); } else { $criticality = 0; }
 $place       = mcp_post_int('place');        if ($place !== null)       { mcp_check_ref($db, 'tplaces', $place, 'place'); }       else { $place = 0; }
-$technician  = mcp_post_int('technician_id'); if ($technician !== null && $technician > 0) { mcp_check_ref($db, 'tusers', $technician, 'technician_id'); } else { $technician = 0; }
+$technician  = mcp_post_int('technician_id');
+if ($technician !== null && $technician > 0) {
+    mcp_check_ref($db, 'tusers', $technician, 'technician_id');
+    // La cible doit être un vrai technicien (droit ticket_tech), comme dans l'UI
+    // native où la liste déroulante ne propose que des techniciens.
+    if (!mcp_is_technician($db, $technician)) {
+        mcp_deny("technician_id=$technician n'a pas le droit technicien (ticket_tech).", '400 Bad Request');
+    }
+} else { $technician = 0; }
 $t_group     = mcp_post_int('group_id');     if ($t_group !== null && $t_group > 0)        { mcp_check_ref($db, 'tgroups', $t_group, 'group_id'); }       else { $t_group = 0; }
 
 $time      = mcp_post_int('time');      if ($time === null)      { $time = 0; }

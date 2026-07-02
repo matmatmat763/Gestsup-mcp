@@ -46,9 +46,12 @@ GestSup** qui ajoute les endpoints manquants (recherche + écritures) et d'une
 
 Toutes les écritures **répliquent la logique native** de GestSup et **réutilisent
 son mailer** : les notifications partent exactement selon tes paramètres
-(`mail_auto_*`). Aucune valeur de liste n'est codée en dur : les ids (états,
-priorités, catégories, techniciens, procédures…) sont **lus de ton instance** et
-validés. L'identité de l'acteur = `GESTSUP_DEFAULT_USER_ID`.
+(`mail_auto_*`). Aucune valeur de référentiel métier n'est codée en dur : les ids
+(états, priorités, catégories, techniciens, procédures…) sont **lus de ton
+instance** et validés. Seules exceptions : les **conventions d'état internes de
+GestSup** (id 3 = « résolu », 5 = « non attribué », 1 = « attente PEC »), reprises
+telles quelles car le cœur natif les code lui-même en dur. L'identité de
+l'acteur = `GESTSUP_DEFAULT_USER_ID`.
 
 ### Documentation (Obsidian)
 

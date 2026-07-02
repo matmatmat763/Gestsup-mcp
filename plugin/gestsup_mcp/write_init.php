@@ -58,14 +58,23 @@ if (!$author) {
     mcp_deny('author_id introuvable ou désactivé.', '400 Bad Request');
 }
 
+/**
+ * Vérifie qu'un utilisateur (actif) possède le droit technicien `ticket_tech`.
+ * Renvoie true/false ; à utiliser pour l'auteur ET pour tout technicien cible
+ * (création/affectation) afin de ne jamais désigner un non-technicien.
+ */
+function mcp_is_technician($db, $user_id) {
+    $q = $db->prepare("SELECT r.`ticket_tech` FROM `tusers` u JOIN `trights` r ON r.`profile`=u.`profile` WHERE u.`id`=:id AND u.`disable`=0");
+    $q->execute(array('id' => $user_id));
+    $right = $q->fetch();
+    $q->closeCursor();
+    return !empty($right) && (int) $right['ticket_tech'] !== 0;
+}
+
 // --- Défense en profondeur : l'auteur DOIT être un technicien -----------------
 // On n'attribue jamais une écriture à un utilisateur sans le droit `ticket_tech`
 // (sinon, avec la clé API, on pourrait agir au nom de n'importe quel compte).
-$qry = $db->prepare("SELECT `ticket_tech` FROM `trights` WHERE `profile`=:p");
-$qry->execute(array('p' => $author['profile']));
-$right = $qry->fetch();
-$qry->closeCursor();
-if (empty($right) || (int) $right['ticket_tech'] === 0) {
+if (!mcp_is_technician($db, $author['id'])) {
     mcp_deny("author_id=$author_id n'a pas le droit technicien (ticket_tech) : écriture refusée.", '403 Forbidden');
 }
 
@@ -121,7 +130,7 @@ function mcp_native_notify($root, $db, $rparameters, $globalrow, $ruser, $postOv
     } catch (\Throwable $e) {
         $status = 'error: ' . $e->getMessage();
     }
-    $debug = ob_get_clean();
+    ob_end_clean(); // avale la sortie du mailer (echo/debug), inutile en JSON
     chdir($cwd);
     return $status;
 }

@@ -66,10 +66,13 @@ if (!empty($_GET['date_to']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date_
     $bind['date_to'] = $_GET['date_to'] . ' 23:59:59';
 }
 
-// Recherche plein-texte simple sur titre/description
+// Recherche plein-texte simple sur titre/description.
+// Les métacaractères LIKE (\ % _) sont échappés : les mots-clés sont cherchés
+// littéralement, l'appelant ne peut pas injecter ses propres jokers.
 if (!empty($_GET['keywords'])) {
-    $where[] = '(i.title LIKE :kw OR i.description LIKE :kw)';
-    $bind['kw'] = '%' . $_GET['keywords'] . '%';
+    $kw = addcslashes((string) $_GET['keywords'], '\\%_');
+    $where[] = "(i.title LIKE :kw ESCAPE '\\\\' OR i.description LIKE :kw ESCAPE '\\\\')";
+    $bind['kw'] = '%' . $kw . '%';
 }
 
 // Exclusion d'états (ex. masquer les tickets résolus pour "mes tickets ouverts").
