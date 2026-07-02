@@ -8,6 +8,11 @@ instance GestSup réelle et vérifie l'état en base (relecture) **et les mails*
 > Contrairement aux tests unitaires (`npm test`, réseau simulé), ce harnais
 > appelle un **vrai** GestSup. Il n'écrit que sur des tickets qu'il crée.
 
+> 🤖 **La CI exécute ce harnais automatiquement** à chaque push (job
+> `integration` de [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) :
+> elle monte le stack Docker, démarre le collecteur SMTP et lance `run.mjs`.
+> La marche à suivre ci-dessous reste utile pour rejouer le scénario en local.
+
 ## Pré-requis
 
 - `npm run build` (le harnais importe `../dist/`)

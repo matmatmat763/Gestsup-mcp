@@ -35,6 +35,11 @@ services:
     ports:
       - "8080:80"
       - "8443:443"
+    # host.docker.internal fonctionne nativement sur Docker Desktop (Mac/Win) ;
+    # sous Linux (dont GitHub Actions) il faut le déclarer explicitement.
+    # Permet à GestSup d'atteindre le collecteur SMTP lancé sur l'hôte.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
 volumes:

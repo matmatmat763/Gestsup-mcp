@@ -37,3 +37,67 @@ jobs:
             php -l "$f" || status=1
           done
           exit $status
+
+  integration:
+    name: Intégration (plugin + MCP contre un GestSup réel)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: Collecteur SMTP (aiosmtpd)
+        run: |
+          pip install aiosmtpd
+          # 0.0.0.0 : le conteneur GestSup joint l'hôte via host.docker.internal
+          SMTP_HOST=0.0.0.0 nohup python3 test-integration/smtpsink.py \
+            > /tmp/smtpsink.log 2>&1 &
+
+      - name: Récupérer la source GestSup
+        run: ./docker/fetch-source.sh
+
+      - name: Démarrer le stack GestSup (MariaDB + web)
+        run: docker compose -f docker/docker-compose.yml up -d --build
+
+      - name: Attendre que l'API GestSup réponde
+        run: |
+          code=000
+          for i in $(seq 1 60); do
+            code=$(curl -sk -o /dev/null -w '%{http_code}' \
+              -H "X-API-KEY: TESTKEY_local_dev_0123456789abcdef" \
+              "https://localhost:8443/api/v1/ticket/type/" || true)
+            if [ "$code" = "200" ]; then
+              echo "API prête (essai $i)"; exit 0
+            fi
+            sleep 5
+          done
+          echo "L'API GestSup ne répond pas (dernier code HTTP : $code)"
+          exit 1
+
+      - name: Pointer GestSup vers le collecteur SMTP
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T db \
+            mariadb -ugestsup -pgestsup gestsup -e \
+            "UPDATE tparameters SET mail=1, mail_smtp='host.docker.internal', mail_port=1025, mail_smtp_class='IsSMTP()', mail_secure='', mail_auth='' WHERE id=1;"
+
+      - name: Harnais d'intégration (test-integration/run.mjs)
+        env:
+          GESTSUP_BASE_URL: https://localhost:8443
+          GESTSUP_API_KEY: TESTKEY_local_dev_0123456789abcdef
+          GESTSUP_DEFAULT_USER_ID: "10"
+          GESTSUP_INSECURE_TLS: "true"
+        run: node test-integration/run.mjs
+
+      - name: Logs en cas d'échec
+        if: failure()
+        run: |
+          echo "=== docker compose logs ==="
+          docker compose -f docker/docker-compose.yml logs --tail=200 || true
+          echo "=== smtpsink ==="
+          cat /tmp/smtpsink.log || true
+          echo "=== mails capturés ==="
+          cat /tmp/smtp_caught.txt || true
