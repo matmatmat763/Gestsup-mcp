@@ -15,7 +15,9 @@ VERSION="${1:-3.2.60}"
 DEST_SRC="web/src"
 DEST_SQL="db/init/00-skeleton.sql"
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+# Le zip officiel contient des dossiers en lecture seule (vendor/…) : il faut
+# les rendre inscriptibles avant de pouvoir les supprimer.
+trap 'chmod -R u+rwX "$TMP" 2>/dev/null || true; rm -rf "$TMP"' EXIT
 
 echo "==> Récupération du code source GestSup ($VERSION)"
 
@@ -50,9 +52,13 @@ if [ ! -f "$SRC_ROOT/_SQL/skeleton.sql" ]; then
 fi
 
 echo "==> Installation dans $DEST_SRC et $DEST_SQL"
+if [ -d "$DEST_SRC" ]; then chmod -R u+rwX "$DEST_SRC" 2>/dev/null || true; fi
 rm -rf "$DEST_SRC"
 mkdir -p "$DEST_SRC" "$(dirname "$DEST_SQL")"
 cp -a "$SRC_ROOT/." "$DEST_SRC/"
+# Normalise les permissions (mêmes dossiers lecture seule que dans l'archive) :
+# nécessaire pour la copie du plugin ci-dessous et les relances du script.
+chmod -R u+rwX "$DEST_SRC"
 cp "$SRC_ROOT/_SQL/skeleton.sql" "$DEST_SQL"
 
 # Installe le plugin gestsup_mcp dans la source (auto-installé dans le stack)
