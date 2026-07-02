@@ -67,7 +67,7 @@ jobs:
         run: |
           code=000
           for i in $(seq 1 60); do
-            code=$(curl -sk -o /dev/null -w '%{http_code}' \
+            code=$(curl -sk -o /tmp/api_probe.out -w '%{http_code}' \
               -H "X-API-KEY: TESTKEY_local_dev_0123456789abcdef" \
               "https://localhost:8443/api/v1/ticket/type/" || true)
             if [ "$code" = "200" ]; then
@@ -75,7 +75,12 @@ jobs:
             fi
             sleep 5
           done
-          echo "L'API GestSup ne répond pas (dernier code HTTP : $code)"
+          echo "L'API GestSup ne répond pas (dernier code HTTP : $code). Réponse :"
+          cat /tmp/api_probe.out || true
+          echo ""
+          echo "--- Sonde endpoint plugin (referentials.php) ---"
+          curl -sk -H "X-API-KEY: TESTKEY_local_dev_0123456789abcdef" \
+            "https://localhost:8443/plugins/gestsup_mcp/referentials.php?kind=state" || true
           exit 1
 
       - name: Pointer GestSup vers le collecteur SMTP
